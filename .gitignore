@@ -1,0 +1,28 @@
+# Secrets — never commit
+.env
+.env.local
+*.pem
+*.key
+node_modules
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+finance/
+.venv/
+venv/
+
+# Logs
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp

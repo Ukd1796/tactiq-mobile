@@ -36,7 +36,7 @@ public:
 
     struct Info {
         Info() {}
-        explicit Info(const char* name) : fName(name), fSpecVersion(0) {}
+        Info(const char* name) : fName(name), fSpecVersion(0) {}
 
         SkString fName;
         uint32_t fSpecVersion;

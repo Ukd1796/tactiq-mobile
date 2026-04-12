@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Edit2, BarChart2, Trash2, Globe, Shield, TrendingUp } from 'lucide-react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useUserStrategies, useDeleteStrategy, useLoadStrategy } from '../../db/strategies';
-import { Card, Badge, Label, Skeleton } from '../../components/ui';
+import { useStrategyStore, defaultStrategies } from '../../stores/strategyStore';
+import { Card, Badge, Label, Skeleton, Button } from '../../components/ui';
 import { colors, spacing, radius } from '../../lib/theme';
 
 const UNIVERSE_LABELS: Record<string, string> = {
@@ -19,6 +20,23 @@ export function MyStrategiesScreen({ navigation }: any) {
   const { data: strategies, isLoading } = useUserStrategies();
   const deleteStrategy = useDeleteStrategy();
   const loadStrategy   = useLoadStrategy();
+  const store          = useStrategyStore();
+
+  const handleNewStrategy = () => {
+    store.setSavedStrategyId(null);
+    store.hydrateFromDb({
+      universe: 'nifty100',
+      strategies: defaultStrategies,
+      risk: { riskPerTrade: 0.5, maxPosition: 10, pauseThreshold: 5, capitalAmount: 1000000 },
+      strategyName: 'My Strategy',
+    });
+    navigation.navigate('Step1Universe');
+  };
+
+  const handleEdit = async (id: string) => {
+    await loadStrategy.mutateAsync(id);
+    navigation.navigate('StrategyBuilder');
+  };
 
   const handleDelete = (id: string, name: string) => {
     Alert.alert(
@@ -38,6 +56,11 @@ export function MyStrategiesScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
+      <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 4 }}>
+        <Button size="md" onPress={handleNewStrategy}>
+          + New Strategy
+        </Button>
+      </View>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
         {isLoading && [0,1].map(i => <Skeleton key={i} height={160} style={{ borderRadius: radius.xl }} />)}
 
@@ -48,7 +71,7 @@ export function MyStrategiesScreen({ navigation }: any) {
               No strategies saved yet
             </Text>
             <Text style={{ fontSize: 12, color: colors.muted, textAlign: 'center', marginTop: 4 }}>
-              Configure a strategy in the web builder and save it to see it here.
+              Tap "New Strategy" above to build your first strategy.
             </Text>
           </Card>
         )}
@@ -74,6 +97,12 @@ export function MyStrategiesScreen({ navigation }: any) {
                       <BarChart2 size={16} color={colors.primary} />
                     </TouchableOpacity>
                   )}
+                  <TouchableOpacity
+                    onPress={() => handleEdit(row.id)}
+                    style={{ padding: 6, borderRadius: radius.md, backgroundColor: colors.secondary }}
+                  >
+                    <Edit2 size={16} color={colors.foreground} />
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleDelete(row.id, row.name)}
                     style={{ padding: 6, borderRadius: radius.md, backgroundColor: colors.secondary }}
