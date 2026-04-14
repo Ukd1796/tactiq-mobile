@@ -5,6 +5,7 @@ import { useStrategyStore } from '../../stores/strategyStore';
 import { Button } from '../../components/ui';
 import { StepSlider } from '../../components/ui/StepSlider';
 import { colors, spacing, radius } from '../../lib/theme';
+import { RISK_CONFIG } from '../../lib/riskConfig';
 import { StepIndicator } from './Step1Universe';
 
 function fmtINR(n: number) {
@@ -17,7 +18,6 @@ export function Step3Risk({ navigation }: any) {
 
   const maxLossPerTrade = risk.capitalAmount * (risk.riskPerTrade / 100);
   const perStockAmount  = risk.capitalAmount * (risk.maxPosition / 100);
-  const pauseAtAmount   = risk.capitalAmount * (risk.pauseThreshold / 100);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -32,7 +32,7 @@ export function Step3Risk({ navigation }: any) {
           <Text style={{ fontSize: 22, fontFamily: 'Inter_700Bold', color: colors.foreground, marginBottom: 6 }}>
             Set your risk limits
           </Text>
-          <Text style={{ fontSize: 14, color: colors.muted, lineHeight: 20, marginBottom: 24 }}>
+          <Text style={{ fontSize: 14, color: colors.muted, lineHeight: 20, marginBottom: 28 }}>
             These limits cap your downside. Tighter = fewer trades.
           </Text>
 
@@ -66,31 +66,37 @@ export function Step3Risk({ navigation }: any) {
 
           {/* Risk per trade */}
           <SliderRow
-            label="Risk per trade"
+            label={RISK_CONFIG.riskPerTrade.label}
             hint={`≈ ${fmtINR(maxLossPerTrade)} max loss per trade`}
             value={risk.riskPerTrade}
-            min={0.1} max={2.0} step={0.1}
-            formatLabel={(v) => `${v.toFixed(1)}%`}
+            min={RISK_CONFIG.riskPerTrade.min}
+            max={RISK_CONFIG.riskPerTrade.max}
+            step={RISK_CONFIG.riskPerTrade.step}
+            formatLabel={RISK_CONFIG.riskPerTrade.formatLabel}
             onChange={(v) => setRisk({ riskPerTrade: v })}
           />
 
           {/* Max position */}
           <SliderRow
-            label="Max single position"
+            label={RISK_CONFIG.maxPosition.label}
             hint={`≈ ${fmtINR(perStockAmount)} per stock`}
             value={risk.maxPosition}
-            min={5} max={20} step={1}
-            formatLabel={(v) => `${v}%`}
+            min={RISK_CONFIG.maxPosition.min}
+            max={RISK_CONFIG.maxPosition.max}
+            step={RISK_CONFIG.maxPosition.step}
+            formatLabel={RISK_CONFIG.maxPosition.formatLabel}
             onChange={(v) => setRisk({ maxPosition: v })}
           />
 
-          {/* Weekly pause */}
+          {/* Pause threshold */}
           <SliderRow
-            label="Weekly pause threshold"
-            hint={`Pause new buys if portfolio drops ${fmtINR(pauseAtAmount)}`}
+            label={RISK_CONFIG.pauseThreshold.label}
+            hint={`Pause buys if ${risk.pauseThreshold}% of stocks are in a downtrend`}
             value={risk.pauseThreshold}
-            min={2} max={10} step={1}
-            formatLabel={(v) => `${v}%`}
+            min={RISK_CONFIG.pauseThreshold.min}
+            max={RISK_CONFIG.pauseThreshold.max}
+            step={RISK_CONFIG.pauseThreshold.step}
+            formatLabel={RISK_CONFIG.pauseThreshold.formatLabel}
             onChange={(v) => setRisk({ pauseThreshold: v })}
           />
         </ScrollView>
@@ -123,11 +129,11 @@ function SliderRow({
   onChange: (v: number) => void;
 }) {
   return (
-    <View style={{ marginBottom: 24 }}>
-      <Text style={{ fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.foreground, marginBottom: 4 }}>
-        {label}
-      </Text>
-      <Text style={{ fontSize: 11, color: colors.muted, marginBottom: 10 }}>{hint}</Text>
+    <View style={{ marginBottom: 28 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+        <Text style={{ fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.foreground }}>{label}</Text>
+        <Text style={{ fontSize: 11, color: colors.muted, flexShrink: 1, textAlign: 'right', marginLeft: 8 }}>{hint}</Text>
+      </View>
       <StepSlider value={value} min={min} max={max} step={step} onChange={onChange} formatLabel={formatLabel} />
     </View>
   );

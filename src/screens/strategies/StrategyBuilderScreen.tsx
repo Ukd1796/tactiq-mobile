@@ -14,6 +14,7 @@ import { Button, Card, Badge } from '../../components/ui';
 import { StepSlider } from '../../components/ui/StepSlider';
 import { colors, spacing, radius } from '../../lib/theme';
 import type { StrategyConfigPayload } from '../../api/types';
+import { RISK_CONFIG } from '../../lib/riskConfig';
 
 // ─── Templates ───────────────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ const TEMPLATES = [
     name: 'Bear Shield',
     desc: 'Minimal exposure, capital preservation',
     accent: '#EF4444',
-    risk: { riskPerTrade: 0.3, maxPosition: 5, pauseThreshold: 3, capitalAmount: 1000000 },
+    risk: { riskPerTrade: 0.3, maxPosition: 5, pauseThreshold: 25, capitalAmount: 1000000 },
     enabled: { 'mean-reversion': true, 'trend-pullback': false, breakout: false, 'quiet-breakout': false, 'trend-follow': false },
   },
   {
@@ -31,7 +32,7 @@ const TEMPLATES = [
     name: 'Balanced',
     desc: 'All strategies, moderate risk',
     accent: colors.primary,
-    risk: { riskPerTrade: 0.5, maxPosition: 10, pauseThreshold: 5, capitalAmount: 1000000 },
+    risk: { riskPerTrade: 0.5, maxPosition: 10, pauseThreshold: 35, capitalAmount: 1000000 },
     enabled: { 'trend-follow': true, breakout: true, 'quiet-breakout': true, 'trend-pullback': true, 'mean-reversion': false },
   },
   {
@@ -39,7 +40,7 @@ const TEMPLATES = [
     name: 'Bull Rider',
     desc: 'High conviction, trending markets',
     accent: '#22C55E',
-    risk: { riskPerTrade: 1.0, maxPosition: 15, pauseThreshold: 7, capitalAmount: 1000000 },
+    risk: { riskPerTrade: 1.0, maxPosition: 15, pauseThreshold: 45, capitalAmount: 1000000 },
     enabled: { 'trend-follow': true, breakout: true, 'quiet-breakout': true, 'trend-pullback': true, 'mean-reversion': false },
   },
   {
@@ -47,7 +48,7 @@ const TEMPLATES = [
     name: 'Recovery',
     desc: 'Bounce plays after corrections',
     accent: '#F59E0B',
-    risk: { riskPerTrade: 0.7, maxPosition: 12, pauseThreshold: 6, capitalAmount: 1000000 },
+    risk: { riskPerTrade: 0.7, maxPosition: 12, pauseThreshold: 30, capitalAmount: 1000000 },
     enabled: { 'mean-reversion': true, 'trend-pullback': true, breakout: false, 'quiet-breakout': false, 'trend-follow': false },
   },
 ];
@@ -273,24 +274,33 @@ export function StrategyBuilderScreen({ navigation }: any) {
               </View>
             </View>
             <RiskSliderRow
-              label="Risk per trade"
+              label={RISK_CONFIG.riskPerTrade.label}
               hint={`≈ ${fmtINR(store.risk.capitalAmount * store.risk.riskPerTrade / 100)} max loss`}
-              value={store.risk.riskPerTrade} min={0.1} max={2.0} step={0.1}
-              formatLabel={(v) => `${v.toFixed(1)}%`}
+              value={store.risk.riskPerTrade}
+              min={RISK_CONFIG.riskPerTrade.min}
+              max={RISK_CONFIG.riskPerTrade.max}
+              step={RISK_CONFIG.riskPerTrade.step}
+              formatLabel={RISK_CONFIG.riskPerTrade.formatLabel}
               onChange={(v) => store.setRisk({ riskPerTrade: v })}
             />
             <RiskSliderRow
-              label="Max position"
+              label={RISK_CONFIG.maxPosition.label}
               hint={`≈ ${fmtINR(store.risk.capitalAmount * store.risk.maxPosition / 100)} per stock`}
-              value={store.risk.maxPosition} min={5} max={20} step={1}
-              formatLabel={(v) => `${v}%`}
+              value={store.risk.maxPosition}
+              min={RISK_CONFIG.maxPosition.min}
+              max={RISK_CONFIG.maxPosition.max}
+              step={RISK_CONFIG.maxPosition.step}
+              formatLabel={RISK_CONFIG.maxPosition.formatLabel}
               onChange={(v) => store.setRisk({ maxPosition: v })}
             />
             <RiskSliderRow
-              label="Pause threshold"
-              hint={`Pause if down ${fmtINR(store.risk.capitalAmount * store.risk.pauseThreshold / 100)}`}
-              value={store.risk.pauseThreshold} min={2} max={10} step={1}
-              formatLabel={(v) => `${v}%`}
+              label={RISK_CONFIG.pauseThreshold.label}
+              hint={`Pause buys if ${store.risk.pauseThreshold}% of stocks in downtrend`}
+              value={store.risk.pauseThreshold}
+              min={RISK_CONFIG.pauseThreshold.min}
+              max={RISK_CONFIG.pauseThreshold.max}
+              step={RISK_CONFIG.pauseThreshold.step}
+              formatLabel={RISK_CONFIG.pauseThreshold.formatLabel}
               onChange={(v) => store.setRisk({ pauseThreshold: v })}
             />
           </Card>

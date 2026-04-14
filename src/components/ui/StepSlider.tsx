@@ -2,7 +2,7 @@
  * StepSlider — tap-based stepper that looks like a slider.
  * No native gesture libs needed; works across all Expo managed apps.
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { colors, radius } from '../../lib/theme';
 
@@ -16,20 +16,27 @@ interface Props {
 }
 
 export function StepSlider({ value, min, max, step, onChange, formatLabel }: Props) {
-  const pct = ((value - min) / (max - min)) * 100;
+  // Snap persisted or stale values into the valid range on mount / when range changes.
+  useEffect(() => {
+    if (value < min) onChange(min);
+    else if (value > max) onChange(max);
+  }, [min, max]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const clamped = Math.min(max, Math.max(min, value));
+  const pct = Math.min(100, Math.max(0, ((clamped - min) / (max - min)) * 100));
 
   const decrement = () => {
-    const next = Math.max(min, parseFloat((value - step).toFixed(2)));
+    const next = Math.max(min, parseFloat((clamped - step).toFixed(2)));
     onChange(next);
   };
   const increment = () => {
-    const next = Math.min(max, parseFloat((value + step).toFixed(2)));
+    const next = Math.min(max, parseFloat((clamped + step).toFixed(2)));
     onChange(next);
   };
 
   return (
     <View style={styles.root}>
-      <TouchableOpacity onPress={decrement} disabled={value <= min} style={[styles.btn, value <= min && styles.btnDisabled]}>
+      <TouchableOpacity onPress={decrement} disabled={clamped <= min} style={[styles.btn, clamped <= min && styles.btnDisabled]}>
         <Text style={styles.btnText}>−</Text>
       </TouchableOpacity>
 
@@ -37,11 +44,11 @@ export function StepSlider({ value, min, max, step, onChange, formatLabel }: Pro
         <View style={[styles.fill, { width: `${pct}%` as any }]} />
       </View>
 
-      <TouchableOpacity onPress={increment} disabled={value >= max} style={[styles.btn, value >= max && styles.btnDisabled]}>
+      <TouchableOpacity onPress={increment} disabled={clamped >= max} style={[styles.btn, clamped >= max && styles.btnDisabled]}>
         <Text style={styles.btnText}>+</Text>
       </TouchableOpacity>
 
-      <Text style={styles.valueLabel}>{formatLabel ? formatLabel(value) : String(value)}</Text>
+      <Text style={styles.valueLabel}>{formatLabel ? formatLabel(clamped) : String(clamped)}</Text>
     </View>
   );
 }

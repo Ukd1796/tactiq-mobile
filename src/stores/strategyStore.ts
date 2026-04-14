@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { RISK_CONFIG } from '../lib/riskConfig';
 
 export type Universe = 'nifty50' | 'nifty100' | 'broad150';
 
@@ -71,7 +72,12 @@ export interface StrategyStore extends StrategyConfig {
 export const useStrategyStore = create<StrategyStore>((set) => ({
   universe: 'nifty100',
   strategies: defaultStrategies,
-  risk: { riskPerTrade: 0.5, maxPosition: 10, pauseThreshold: 5, capitalAmount: 1000000 },
+  risk: {
+    riskPerTrade: RISK_CONFIG.riskPerTrade.default,
+    maxPosition: RISK_CONFIG.maxPosition.default,
+    pauseThreshold: RISK_CONFIG.pauseThreshold.default,
+    capitalAmount: 1000000,
+  },
   strategyName: 'My First Strategy',
   wizardStep: 1,
   backtestStartYear: 2019,

@@ -7,6 +7,7 @@ import { useUserStrategies, useDeleteStrategy, useLoadStrategy } from '../../db/
 import { useStrategyStore, defaultStrategies } from '../../stores/strategyStore';
 import { Card, Badge, Label, Skeleton, Button } from '../../components/ui';
 import { colors, spacing, radius } from '../../lib/theme';
+import { RISK_CONFIG } from '../../lib/riskConfig';
 
 const UNIVERSE_LABELS: Record<string, string> = {
   nifty50: 'Nifty 50', nifty100: 'Nifty 100', broad150: 'Broad 150',
@@ -27,7 +28,12 @@ export function MyStrategiesScreen({ navigation }: any) {
     store.hydrateFromDb({
       universe: 'nifty100',
       strategies: defaultStrategies,
-      risk: { riskPerTrade: 0.5, maxPosition: 10, pauseThreshold: 5, capitalAmount: 1000000 },
+      risk: {
+        riskPerTrade: RISK_CONFIG.riskPerTrade.default,
+        maxPosition: RISK_CONFIG.maxPosition.default,
+        pauseThreshold: RISK_CONFIG.pauseThreshold.default,
+        capitalAmount: 1000000,
+      },
       strategyName: 'My Strategy',
     });
     navigation.navigate('Step1Universe');

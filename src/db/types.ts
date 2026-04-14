@@ -5,6 +5,14 @@ import type {
 } from '../api/types';
 import { defaultStrategies } from '../stores/strategyStore';
 import type { StrategyStore } from '../stores/strategyStore';
+import { RISK_CONFIG } from '../lib/riskConfig';
+
+/** Clamp a DB value to the valid range; fall back to default if out of bounds. */
+function clampRisk(value: number, key: keyof typeof RISK_CONFIG): number {
+  const { min, max, default: def } = RISK_CONFIG[key];
+  if (value < min || value > max) return def;
+  return value;
+}
 
 // ─── Exact DB row shape ─────────────────────────────────────────────────────
 
@@ -116,9 +124,9 @@ export function rowToStoreSlice(row: UserStrategyRow) {
     universe:          row.universe,
     strategies,
     risk: {
-      riskPerTrade:   row.risk.risk_per_trade_pct,
-      maxPosition:    row.risk.max_position_pct,
-      pauseThreshold: row.risk.pause_threshold_pct,
+      riskPerTrade:   clampRisk(row.risk.risk_per_trade_pct,  'riskPerTrade'),
+      maxPosition:    clampRisk(row.risk.max_position_pct,    'maxPosition'),
+      pauseThreshold: clampRisk(row.risk.pause_threshold_pct, 'pauseThreshold'),
       capitalAmount:  row.risk.capital_amount,
     },
     lastBacktestRunId:  row.last_backtest_run_id,
