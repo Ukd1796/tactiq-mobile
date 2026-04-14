@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Edit2, BarChart2, Trash2, Globe, Shield, TrendingUp } from 'lucide-react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useUserStrategies, useDeleteStrategy, useLoadStrategy } from '../../db/strategies';
 import { useStrategyStore, defaultStrategies } from '../../stores/strategyStore';
 import { Card, Badge, Label, Skeleton, Button } from '../../components/ui';
