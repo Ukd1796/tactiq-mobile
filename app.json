@@ -3,6 +3,9 @@
     "name": "TacTiq",
     "slug": "tactiq",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -23,6 +26,7 @@
       "package": "com.tactiq.app"
     },
     "plugins": [
+      "expo-updates",
       "expo-secure-store",
       "expo-font",
       [
@@ -37,6 +41,13 @@
         }
       ],
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bc49f3dc-f731-4500-854e-46c7c95e77c1"
+      }
+    },
+    "owner": "ujjwal1796"
   }
 }

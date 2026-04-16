@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StopCircle, TrendingUp } from 'lucide-react-native';
+import { StopCircle, TrendingUp, ArrowUpDown } from 'lucide-react-native';
 import { usePaperSession, useStopPaperSession } from '../../db/paper_trade';
 import { usePaperDashboard, usePaperWeeklyReport } from '../../api/paper_trade';
 import { Card, Label, Badge, Skeleton } from '../../components/ui';
-import { colors, spacing, regimeColor } from '../../lib/theme';
+import { colors, spacing, radius, regimeColor } from '../../lib/theme';
+import type { PaperPosition } from '../../api/types';
 
 function fmtINR(n: number) { return `₹${n.toLocaleString('en-IN')}`; }
 function fmtPct(n: number) { return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`; }
@@ -17,8 +18,44 @@ function fmtDate(iso: string) {
 
 type Tab = 'positions' | 'signals' | 'report';
 
+type PositionSort =
+  | 'default'
+  | 'pnl_desc'
+  | 'pnl_asc'
+  | 'invested_desc'
+  | 'invested_asc'
+  | 'held_desc';
+
+const SORT_OPTIONS: { key: PositionSort; label: string }[] = [
+  { key: 'default',       label: 'Default'       },
+  { key: 'pnl_desc',      label: 'Best P&L'      },
+  { key: 'pnl_asc',       label: 'Worst P&L'     },
+  { key: 'invested_desc', label: 'Most Invested'  },
+  { key: 'invested_asc',  label: 'Least Invested' },
+  { key: 'held_desc',     label: 'Longest Held'   },
+];
+
+function sortPositions(positions: PaperPosition[], sort: PositionSort): PaperPosition[] {
+  const arr = [...positions];
+  switch (sort) {
+    case 'pnl_desc':
+      return arr.sort((a, b) => (b.unrealised_pnl_pct ?? -Infinity) - (a.unrealised_pnl_pct ?? -Infinity));
+    case 'pnl_asc':
+      return arr.sort((a, b) => (a.unrealised_pnl_pct ?? Infinity) - (b.unrealised_pnl_pct ?? Infinity));
+    case 'invested_desc':
+      return arr.sort((a, b) => (b.entry_price * b.quantity) - (a.entry_price * a.quantity));
+    case 'invested_asc':
+      return arr.sort((a, b) => (a.entry_price * a.quantity) - (b.entry_price * b.quantity));
+    case 'held_desc':
+      return arr.sort((a, b) => b.days_held - a.days_held);
+    default:
+      return arr;
+  }
+}
+
 export function PaperTradeScreen() {
-  const [tab, setTab] = useState<Tab>('positions');
+  const [tab,          setTab]          = useState<Tab>('positions');
+  const [positionSort, setPositionSort] = useState<PositionSort>('default');
 
   const { data: sessionRow, isLoading: sessionLoading } = usePaperSession();
   const { data: dashboard, refetch, isRefetching } = usePaperDashboard(sessionRow?.session_id ?? null);
@@ -64,8 +101,9 @@ export function PaperTradeScreen() {
     );
   }
 
-  const positions = Array.isArray(dashboard?.open_positions) ? dashboard!.open_positions : [];
-  const signals   = Array.isArray(dashboard?.todays_signals)  ? dashboard!.todays_signals  : [];
+  const positions       = Array.isArray(dashboard?.open_positions) ? dashboard!.open_positions : [];
+  const signals         = Array.isArray(dashboard?.todays_signals)  ? dashboard!.todays_signals  : [];
+  const sortedPositions = useMemo(() => sortPositions(positions, positionSort), [positions, positionSort]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
@@ -166,11 +204,49 @@ export function PaperTradeScreen() {
           ))}
         </View>
 
+        {/* Sort strip — only when on positions tab and there's something to sort */}
+        {tab === 'positions' && positions.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: spacing.xs, paddingVertical: 2 }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginRight: 4 }}>
+              <ArrowUpDown size={12} color={colors.muted} />
+            </View>
+            {SORT_OPTIONS.map(opt => {
+              const active = positionSort === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  onPress={() => setPositionSort(opt.key)}
+                  style={{
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    borderRadius: radius.full,
+                    backgroundColor: active ? colors.primary : colors.secondary,
+                    borderWidth: 1,
+                    borderColor: active ? colors.primary : colors.border,
+                  }}
+                >
+                  <Text style={{
+                    fontSize: 11,
+                    fontFamily: active ? 'Inter_600SemiBold' : 'Inter_500Medium',
+                    color: active ? '#fff' : colors.muted,
+                  }}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
         {/* Tab content */}
         {tab === 'positions' && (
           positions.length === 0 ? (
             <Text style={{ fontSize: 13, color: colors.muted, textAlign: 'center', paddingVertical: 32 }}>No open positions</Text>
-          ) : positions.map((p, i) => {
+          ) : sortedPositions.map((p, i) => {
             const invested   = p.entry_price * p.quantity;
             const pnlAbs     = p.unrealised_pnl_pct != null ? (invested * p.unrealised_pnl_pct) / 100 : null;
             // current_price will come from API once exposed; until then estimate it
@@ -181,7 +257,7 @@ export function PaperTradeScreen() {
               : p.unrealised_pnl_pct >= 0 ? colors.success : colors.destructive;
 
             return (
-              <Card key={`${p.symbol}-${i}`}>
+              <Card key={`${p.symbol}-${p.strategy}-${i}`}>
                 {/* Row 1: symbol + P&L % */}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <Text style={{ fontSize: 15, fontFamily: 'Inter_700Bold', color: colors.foreground }}>{p.symbol}</Text>
