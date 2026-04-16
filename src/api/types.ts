@@ -187,6 +187,9 @@ export interface PaperPosition {
   entry_price: number;
   quantity: number;
   unrealised_pnl_pct: number | null;
+  current_price: number | null;
+  unrealised_pnl_abs: number | null;
+  current_value: number | null;
 }
 
 export interface PaperSignal {
@@ -205,6 +208,9 @@ export interface PaperDashboard {
   regime: RegimeValue;
   open_positions: PaperPosition[];
   todays_signals: PaperSignal[];
+  total_invested: number;
+  cash_balance: number;
+  unrealised_pnl_abs: number | null;
 }
 
 export interface PaperWeeklyReport {
