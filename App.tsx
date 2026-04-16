@@ -1,6 +1,7 @@
 import 'react-native-gesture-handler';
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './src/lib/queryClient';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import {
   useFonts,
@@ -16,12 +17,6 @@ import Toast from 'react-native-toast-message';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { RootNavigator } from './src/navigation';
 import { colors } from './src/lib/theme';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: 1, staleTime: 30_000 },
-  },
-});
 
 export default function App() {
   const [fontsLoaded] = useFonts({

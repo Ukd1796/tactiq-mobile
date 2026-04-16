@@ -67,6 +67,7 @@ export interface StrategyStore extends StrategyConfig {
   addToBacktestHistory: (entry: BacktestHistoryEntry) => void;
   setSavedStrategyId: (id: string | null) => void;
   hydrateFromDb: (slice: DbSlice) => void;
+  reset: () => void;
 }
 
 export const useStrategyStore = create<StrategyStore>((set) => ({
@@ -107,4 +108,23 @@ export const useStrategyStore = create<StrategyStore>((set) => ({
   })),
   setSavedStrategyId: (savedStrategyId) => set({ savedStrategyId }),
   hydrateFromDb: (slice) => set(slice),
+  reset: () => set({
+    universe: 'nifty100',
+    strategies: defaultStrategies,
+    risk: {
+      riskPerTrade: RISK_CONFIG.riskPerTrade.default,
+      maxPosition: RISK_CONFIG.maxPosition.default,
+      pauseThreshold: RISK_CONFIG.pauseThreshold.default,
+      capitalAmount: 1000000,
+    },
+    strategyName: 'My First Strategy',
+    wizardStep: 1,
+    backtestStartYear: 2019,
+    backtestStartMonth: 1,
+    backtestEndYear: new Date().getFullYear(),
+    backtestEndMonth: new Date().getMonth() + 1,
+    savedStrategyId: null,
+    lastBacktestRunId: null,
+    backtestHistory: [],
+  }),
 }));

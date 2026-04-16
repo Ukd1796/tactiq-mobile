@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { queryClient } from '../lib/queryClient';
+import { useStrategyStore } from '../stores/strategyStore';
 
 interface AuthContextValue {
   session: Session | null;
@@ -19,6 +21,7 @@ const AuthContext = createContext<AuthContextValue>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const resetStrategy = useStrategyStore(s => s.reset);
 
   useEffect(() => {
     // Restore session from SecureStore on mount
@@ -28,9 +31,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Listen for auth state changes (sign-in, sign-out, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setLoading(false);
+
+      // Wipe all cached query data and reset strategy store on sign-out
+      // so a new user never sees the previous user's data.
+      if (event === 'SIGNED_OUT') {
+        queryClient.clear();
+        resetStrategy();
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -38,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    // onAuthStateChange fires SIGNED_OUT above — cache + store reset happens there
   };
 
   return (
