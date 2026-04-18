@@ -3,6 +3,8 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { queryClient } from '../lib/queryClient';
 import { useStrategyStore } from '../stores/strategyStore';
+import { registerForPushNotifications } from '../lib/notifications';
+import { api } from '../lib/api';
 
 interface AuthContextValue {
   session: Session | null;
@@ -34,6 +36,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setLoading(false);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        registerForPushNotifications().then(token => {
+          if (token) {
+            api.post('/users/push-token', { user_id: session.user.id, token }).catch(err => {
+              console.error('[Push] Token registration failed:', err);
+            });
+          }
+        });
+      }
 
       // Wipe all cached query data and reset strategy store on sign-out
       // so a new user never sees the previous user's data.

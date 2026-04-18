@@ -12,6 +12,7 @@ import { colors, radius, spacing } from '../../lib/theme';
 type Props = NativeStackScreenProps<AuthStackParamList, 'SignUp'>;
 
 export function SignUpScreen({ navigation }: Props) {
+  const [name,     setName]     = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [loading,  setLoading]  = useState(false);
@@ -19,10 +20,14 @@ export function SignUpScreen({ navigation }: Props) {
   const [done,     setDone]     = useState(false);
 
   const handleSignUp = async () => {
-    if (!email || !password) return;
+    if (!name || !email || !password) return;
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: name } },
+    });
     setLoading(false);
     if (error) setError(error.message);
     else setDone(true);
@@ -64,6 +69,10 @@ export function SignUpScreen({ navigation }: Props) {
         </View>
 
         <View style={{ gap: 12 }}>
+          <View>
+            <Text style={{ fontSize: 12, fontFamily: 'Inter_500Medium', color: colors.muted, marginBottom: 6 }}>Full Name</Text>
+            <TextInput value={name} onChangeText={setName} autoCapitalize="words" placeholder="Your name" placeholderTextColor={colors.muted} style={inputStyle} />
+          </View>
           <View>
             <Text style={{ fontSize: 12, fontFamily: 'Inter_500Medium', color: colors.muted, marginBottom: 6 }}>Email</Text>
             <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="you@example.com" placeholderTextColor={colors.muted} style={inputStyle} />

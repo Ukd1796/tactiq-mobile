@@ -43,7 +43,14 @@
           }
         }
       ],
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#7C3AED",
+          "sounds": []
+        }
+      ]
     ],
     "extra": {
       "router": {},
