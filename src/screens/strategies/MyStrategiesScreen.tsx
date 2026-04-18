@@ -59,6 +59,10 @@ export function MyStrategiesScreen({ navigation }: any) {
     navigation.navigate('BacktestResults');
   };
 
+  const handlePaperTrade = (id: string) => {
+    navigation.getParent()?.navigate('PaperTrade', { strategyId: id });
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
       <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 4 }}>
@@ -102,6 +106,12 @@ export function MyStrategiesScreen({ navigation }: any) {
                       <BarChart2 size={16} color={colors.primary} />
                     </TouchableOpacity>
                   )}
+                  <TouchableOpacity
+                    onPress={() => handlePaperTrade(row.id)}
+                    style={{ padding: 6, borderRadius: radius.md, backgroundColor: colors.primary + '20' }}
+                  >
+                    <TrendingUp size={16} color={colors.primary} />
+                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleEdit(row.id)}
                     style={{ padding: 6, borderRadius: radius.md, backgroundColor: colors.secondary }}

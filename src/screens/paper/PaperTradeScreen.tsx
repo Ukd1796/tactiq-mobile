@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl,
+  View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StopCircle, TrendingUp, ArrowUpDown } from 'lucide-react-native';
-import { usePaperSession, useStopPaperSession } from '../../db/paper_trade';
-import { usePaperDashboard, usePaperWeeklyReport } from '../../api/paper_trade';
-import { Card, Label, Badge, Skeleton } from '../../components/ui';
+import { StopCircle, TrendingUp, ArrowUpDown, CheckCircle2 } from 'lucide-react-native';
+import { usePaperSession, useStopPaperSession, useCreatePaperSession } from '../../db/paper_trade';
+import { usePaperDashboard, usePaperWeeklyReport, useStartPaperTrade } from '../../api/paper_trade';
+import { useUserStrategies } from '../../db/strategies';
+import { useAuth } from '../../contexts/AuthContext';
+import { Card, Label, Badge, Skeleton, Button } from '../../components/ui';
 import { colors, spacing, radius, regimeColor } from '../../lib/theme';
 import type { PaperPosition } from '../../api/types';
 
@@ -53,14 +55,42 @@ function sortPositions(positions: PaperPosition[], sort: PositionSort): PaperPos
   }
 }
 
-export function PaperTradeScreen() {
+export function PaperTradeScreen({ route }: any) {
   const [tab,          setTab]          = useState<Tab>('positions');
   const [positionSort, setPositionSort] = useState<PositionSort>('default');
+  const [selectedId,   setSelectedId]   = useState<string | null>(route?.params?.strategyId ?? null);
+  const [capital,      setCapital]      = useState('100000');
 
+  const { user } = useAuth();
   const { data: sessionRow, isLoading: sessionLoading } = usePaperSession();
   const { data: dashboard, refetch, isRefetching } = usePaperDashboard(sessionRow?.session_id ?? null);
   const { data: weeklyReport } = usePaperWeeklyReport(sessionRow?.session_id ?? null);
-  const stopSession = useStopPaperSession();
+  const { data: strategies = [], isLoading: strategiesLoading } = useUserStrategies();
+  const stopSession    = useStopPaperSession();
+  const startBackend   = useStartPaperTrade();
+  const createSession  = useCreatePaperSession();
+
+  const handleStart = () => {
+    const strat = strategies.find(s => s.id === selectedId);
+    if (!strat || !user) return;
+    const startingCapital = Math.max(10000, parseInt(capital, 10) || 100000);
+    startBackend.mutate(
+      { strategy_id: strat.id, starting_capital: startingCapital, strategy_name: strat.name, user_id: user.id },
+      {
+        onSuccess: (res) => {
+          createSession.mutate({
+            user_id:          user.id,
+            session_id:       res.session_id,
+            strategy_id:      strat.id,
+            strategy_name:    strat.name,
+            starting_capital: startingCapital,
+            status:           'active',
+          });
+        },
+        onError: (err) => Alert.alert('Failed to start session', err.message),
+      }
+    );
+  };
 
   const pnlPct = dashboard && sessionRow
     ? ((dashboard.portfolio_value - sessionRow.starting_capital) / sessionRow.starting_capital) * 100
@@ -88,15 +118,92 @@ export function PaperTradeScreen() {
   }
 
   if (!sessionRow) {
+    const inputStyle = {
+      backgroundColor: colors.secondary,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 14,
+      color: colors.foreground,
+      fontFamily: 'Inter_400Regular',
+    } as const;
+
+    const isStarting = startBackend.isPending || createSession.isPending;
+
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: spacing.lg }}>
-        <TrendingUp size={40} color={colors.primary} />
-        <Text style={{ fontSize: 18, fontFamily: 'Inter_700Bold', color: colors.foreground, textAlign: 'center', marginTop: 16 }}>
-          No Active Session
-        </Text>
-        <Text style={{ fontSize: 13, color: colors.muted, textAlign: 'center', marginTop: 8, lineHeight: 20 }}>
-          Start a paper trading session from the web app to track live signals here.
-        </Text>
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+            <TrendingUp size={22} color={colors.primary} />
+            <Text style={{ fontSize: 20, fontFamily: 'Inter_700Bold', color: colors.foreground }}>
+              Start Paper Trading
+            </Text>
+          </View>
+          <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 20, marginBottom: 4 }}>
+            Pick a saved strategy and set your starting capital. Signals will be tracked automatically once the session begins.
+          </Text>
+
+          {/* Strategy picker */}
+          <Text style={{ fontSize: 12, fontFamily: 'Inter_500Medium', color: colors.muted, marginBottom: 4 }}>
+            Select Strategy
+          </Text>
+          {strategiesLoading ? (
+            <>{[0,1,2].map(i => <Skeleton key={i} height={56} />)}</>
+          ) : strategies.length === 0 ? (
+            <Text style={{ fontSize: 13, color: colors.muted, textAlign: 'center', paddingVertical: 24 }}>
+              No strategies saved yet. Build one in the Strategies tab first.
+            </Text>
+          ) : strategies.map(s => {
+            const selected = selectedId === s.id;
+            return (
+              <TouchableOpacity
+                key={s.id}
+                onPress={() => setSelectedId(s.id)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                  padding: 14, borderRadius: radius.md, borderWidth: 1,
+                  borderColor: selected ? colors.primary : colors.border,
+                  backgroundColor: selected ? colors.primary + '15' : colors.secondary,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontFamily: 'Inter_600SemiBold', color: colors.foreground }}>{s.name}</Text>
+                  <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
+                    {s.universe.toUpperCase()} · {s.strategies.length} sub-strateg{s.strategies.length === 1 ? 'y' : 'ies'}
+                  </Text>
+                </View>
+                {selected && <CheckCircle2 size={18} color={colors.primary} />}
+              </TouchableOpacity>
+            );
+          })}
+
+          {/* Starting capital */}
+          <View style={{ marginTop: 4 }}>
+            <Text style={{ fontSize: 12, fontFamily: 'Inter_500Medium', color: colors.muted, marginBottom: 6 }}>
+              Starting Capital (₹)
+            </Text>
+            <TextInput
+              value={capital}
+              onChangeText={setCapital}
+              keyboardType="numeric"
+              placeholder="100000"
+              placeholderTextColor={colors.muted}
+              style={inputStyle}
+            />
+          </View>
+
+          <Button
+            onPress={handleStart}
+            loading={isStarting}
+            disabled={!selectedId || isStarting}
+            size="lg"
+            style={{ marginTop: 4 }}
+          >
+            Start Session
+          </Button>
+        </ScrollView>
       </SafeAreaView>
     );
   }

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, ScrollView, Animated } from 'react-native';
+import { View, Text, ScrollView, Animated, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AlertCircle } from 'lucide-react-native';
+import { AlertCircle, TrendingUp } from 'lucide-react-native';
 import { useStrategyStore } from '../../stores/strategyStore';
 import { useBacktestResult, isComplete } from '../../api/backtest';
 import { useBacktestResultFromDb, useSaveBacktestResult } from '../../db/backtest';
@@ -132,7 +132,7 @@ function FailedState({ error }: { error?: string }) {
 
 // ─── Results view ─────────────────────────────────────────────────────────────
 
-function ResultsView({ result }: { result: BacktestComplete }) {
+function ResultsView({ result, onStartPaperTrade }: { result: BacktestComplete; onStartPaperTrade: () => void }) {
   const s = result.summary;
 
   const summaryItems = [
@@ -215,14 +215,29 @@ function ResultsView({ result }: { result: BacktestComplete }) {
           ))}
         </Card>
       )}
+      {/* Paper trade CTA */}
+      <TouchableOpacity
+        onPress={onStartPaperTrade}
+        style={{
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+          margin: spacing.lg, marginTop: 4,
+          paddingVertical: 14, borderRadius: 12,
+          backgroundColor: colors.primary,
+        }}
+      >
+        <TrendingUp size={16} color="#fff" />
+        <Text style={{ fontSize: 15, fontFamily: 'Inter_600SemiBold', color: '#fff' }}>
+          Start Paper Trading
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-export function BacktestResultsScreen() {
-  const { lastBacktestRunId } = useStrategyStore();
+export function BacktestResultsScreen({ navigation }: any) {
+  const { lastBacktestRunId, savedStrategyId } = useStrategyStore();
 
   // 1. Supabase cache — always fires when runId is set
   const { data: dbData, isLoading: dbLoading, isError: dbError } = useBacktestResultFromDb(lastBacktestRunId);
@@ -285,7 +300,10 @@ export function BacktestResultsScreen() {
 
     // Complete
     if (complete) {
-      return <ResultsView result={complete} />;
+      const handleStartPaperTrade = () => {
+        navigation.getParent()?.navigate('PaperTrade', { strategyId: savedStrategyId });
+      };
+      return <ResultsView result={complete} onStartPaperTrade={handleStartPaperTrade} />;
     }
 
     // Skeleton fallback (DB loading first render)
