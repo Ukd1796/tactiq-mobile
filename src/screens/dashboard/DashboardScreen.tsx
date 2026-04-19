@@ -22,7 +22,7 @@ const UNIVERSE_LABELS: Record<string, string> = {
   nifty50: 'Nifty 50', nifty100: 'Nifty 100', broad150: 'Broad 150',
 };
 
-export function DashboardScreen() {
+export function DashboardScreen({ navigation }: any) {
   const [profileOpen,  setProfileOpen]  = useState(false);
   const [strategyOpen, setStrategyOpen] = useState(false);
   const { user, signOut } = useAuth();
@@ -365,6 +365,7 @@ export function DashboardScreen() {
 
         {/* Paper trade widget */}
         {paperSession ? (
+          <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('PaperTrade')}>
           <Card>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -391,6 +392,7 @@ export function DashboardScreen() {
               <Skeleton height={24} />
             )}
           </Card>
+          </TouchableOpacity>
         ) : (
           <Card style={{ alignItems: 'center', paddingVertical: 20 }}>
             <Zap size={24} color={colors.primary} />

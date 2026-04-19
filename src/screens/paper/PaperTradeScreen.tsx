@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StopCircle, TrendingUp, ArrowUpDown, CheckCircle2 } from 'lucide-react-native';
-import { usePaperSession, useStopPaperSession, useCreatePaperSession } from '../../db/paper_trade';
+import { usePaperSessions, useStopPaperSession, useCreatePaperSession, MAX_ACTIVE_SESSIONS } from '../../db/paper_trade';
 import { usePaperDashboard, usePaperWeeklyReport, useStartPaperTrade, usePaperInsights } from '../../api/paper_trade';
 import { useUserStrategies } from '../../db/strategies';
 import { useAuth } from '../../contexts/AuthContext';
@@ -56,10 +56,12 @@ function sortPositions(positions: PaperPosition[], sort: PositionSort): PaperPos
 }
 
 export function PaperTradeScreen({ route }: any) {
-  const [tab,          setTab]          = useState<Tab>('positions');
-  const [positionSort, setPositionSort] = useState<PositionSort>('default');
-  const [selectedId,   setSelectedId]   = useState<string | null>(null);
-  const [capital,      setCapital]      = useState('100000');
+  const [tab,            setTab]            = useState<Tab>('positions');
+  const [positionSort,   setPositionSort]   = useState<PositionSort>('default');
+  const [selectedId,     setSelectedId]     = useState<string | null>(null);
+  const [capital,        setCapital]        = useState('100000');
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [showNewForm,     setShowNewForm]     = useState(false);
 
   // Bottom tabs stay mounted — useState initializer only runs once, so sync
   // params via useEffect to catch navigations to an already-mounted tab.
@@ -69,7 +71,21 @@ export function PaperTradeScreen({ route }: any) {
   }, [incomingStrategyId]);
 
   const { user } = useAuth();
-  const { data: sessionRow, isLoading: sessionLoading } = usePaperSession();
+  const { data: sessions = [], isLoading: sessionLoading } = usePaperSessions();
+
+  // Auto-select the newest session; respect manual selection
+  React.useEffect(() => {
+    if (sessions.length > 0 && !activeSessionId) {
+      setActiveSessionId(sessions[0].id);
+    }
+    // If the active session was stopped/removed, fall back to newest
+    if (activeSessionId && !sessions.find(s => s.id === activeSessionId)) {
+      setActiveSessionId(sessions[0]?.id ?? null);
+    }
+  }, [sessions]);
+
+  const sessionRow = sessions.find(s => s.id === activeSessionId) ?? null;
+
   const { data: dashboard, refetch, isRefetching } = usePaperDashboard(sessionRow?.session_id ?? null);
   const { data: weeklyReport } = usePaperWeeklyReport(sessionRow?.session_id ?? null);
   const { data: insights, isLoading: insightsLoading } = usePaperInsights(sessionRow?.session_id ?? null);
@@ -86,14 +102,22 @@ export function PaperTradeScreen({ route }: any) {
       { strategy_id: strat.id, starting_capital: startingCapital, strategy_name: strat.name, user_id: user.id },
       {
         onSuccess: (res) => {
-          createSession.mutate({
-            user_id:          user.id,
-            session_id:       res.session_id,
-            strategy_id:      strat.id,
-            strategy_name:    strat.name,
-            starting_capital: startingCapital,
-            status:           'active',
-          });
+          createSession.mutate(
+            {
+              user_id:          user.id,
+              session_id:       res.session_id,
+              strategy_id:      strat.id,
+              strategy_name:    strat.name,
+              starting_capital: startingCapital,
+              status:           'active',
+            },
+            {
+              onSuccess: (row) => {
+                setActiveSessionId(row.id);
+                setShowNewForm(false);
+              },
+            }
+          );
         },
         onError: (err) => Alert.alert('Failed to start session', err.message),
       }
@@ -115,6 +139,13 @@ export function PaperTradeScreen({ route }: any) {
     );
   };
 
+  const atSessionLimit = sessions.length >= MAX_ACTIVE_SESSIONS;
+
+  // Must be declared before any early returns — Rules of Hooks
+  const positions       = Array.isArray(dashboard?.open_positions) ? dashboard!.open_positions : [];
+  const signals         = Array.isArray(dashboard?.todays_signals)  ? dashboard!.todays_signals  : [];
+  const sortedPositions = useMemo(() => sortPositions(positions, positionSort), [positions, positionSort]);
+
   if (sessionLoading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -125,7 +156,7 @@ export function PaperTradeScreen({ route }: any) {
     );
   }
 
-  if (!sessionRow) {
+  if (sessions.length === 0 || showNewForm) {
     const inputStyle = {
       backgroundColor: colors.secondary,
       borderRadius: radius.md,
@@ -143,6 +174,11 @@ export function PaperTradeScreen({ route }: any) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
         <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
+          {sessions.length > 0 && (
+            <TouchableOpacity onPress={() => setShowNewForm(false)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <Text style={{ fontSize: 13, color: colors.primary, fontFamily: 'Inter_500Medium' }}>← Back to sessions</Text>
+            </TouchableOpacity>
+          )}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <TrendingUp size={22} color={colors.primary} />
             <Text style={{ fontSize: 20, fontFamily: 'Inter_700Bold', color: colors.foreground }}>
@@ -202,10 +238,15 @@ export function PaperTradeScreen({ route }: any) {
             />
           </View>
 
+          {atSessionLimit && (
+            <Text style={{ fontSize: 12, color: colors.warning, textAlign: 'center', marginTop: 4 }}>
+              You have {MAX_ACTIVE_SESSIONS} active sessions (the maximum). Stop one before starting another.
+            </Text>
+          )}
           <Button
             onPress={handleStart}
             loading={isStarting}
-            disabled={!selectedId || isStarting}
+            disabled={!selectedId || isStarting || atSessionLimit}
             size="lg"
             style={{ marginTop: 4 }}
           >
@@ -215,10 +256,6 @@ export function PaperTradeScreen({ route }: any) {
       </SafeAreaView>
     );
   }
-
-  const positions       = Array.isArray(dashboard?.open_positions) ? dashboard!.open_positions : [];
-  const signals         = Array.isArray(dashboard?.todays_signals)  ? dashboard!.todays_signals  : [];
-  const sortedPositions = useMemo(() => sortPositions(positions, positionSort), [positions, positionSort]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
@@ -230,7 +267,7 @@ export function PaperTradeScreen({ route }: any) {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View>
             <Text style={{ fontSize: 20, fontFamily: 'Inter_700Bold', color: colors.foreground }}>Paper Trading</Text>
-            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{sessionRow.strategy_name}</Text>
+            <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>{sessionRow?.strategy_name}</Text>
           </View>
           <TouchableOpacity
             onPress={handleStop}
@@ -240,6 +277,41 @@ export function PaperTradeScreen({ route }: any) {
             <Text style={{ fontSize: 12, color: colors.destructive, fontFamily: 'Inter_500Medium' }}>Stop</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Session switcher — only shown when multiple sessions active */}
+        {sessions.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {sessions.map(s => {
+              const active = s.id === activeSessionId;
+              return (
+                <TouchableOpacity
+                  key={s.id}
+                  onPress={() => { setActiveSessionId(s.id); setTab('positions'); }}
+                  style={{
+                    paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.full,
+                    backgroundColor: active ? colors.primary : colors.secondary,
+                    borderWidth: 1, borderColor: active ? colors.primary : colors.border,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: active ? '#fff' : colors.muted }}>
+                    {s.strategy_name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            {!atSessionLimit && (
+              <TouchableOpacity
+                onPress={() => setShowNewForm(true)}
+                style={{
+                  paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.full,
+                  backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border,
+                }}
+              >
+                <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.primary }}>+ New</Text>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+        )}
 
         {/* Metric strip */}
         {dashboard ? (() => {
@@ -298,27 +370,47 @@ export function PaperTradeScreen({ route }: any) {
         )}
 
         {/* Tab bar */}
-        <View style={{ flexDirection: 'row', backgroundColor: colors.secondary, borderRadius: 10, padding: 3 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 6 }}
+        >
           {([
-            { key: 'positions', label: `Positions (${positions.length})` },
-            { key: 'signals',   label: `Signals (${signals.length})` },
-            { key: 'report',    label: 'Weekly' },
-            { key: 'insights',  label: 'Insights' },
-          ] as { key: Tab; label: string }[]).map(t => (
-            <TouchableOpacity
-              key={t.key}
-              onPress={() => setTab(t.key)}
-              style={{
-                flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: 'center',
-                backgroundColor: tab === t.key ? colors.card : 'transparent',
-              }}
-            >
-              <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: tab === t.key ? colors.foreground : colors.muted }}>
-                {t.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            { key: 'positions', label: 'Positions', count: positions.length },
+            { key: 'signals',   label: 'Signals',   count: signals.length },
+            { key: 'report',    label: 'Weekly',    count: null },
+            { key: 'insights',  label: 'Insights',  count: null },
+          ] as { key: Tab; label: string; count: number | null }[]).map(t => {
+            const active = tab === t.key;
+            return (
+              <TouchableOpacity
+                key={t.key}
+                onPress={() => setTab(t.key)}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 5,
+                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.full,
+                  backgroundColor: active ? colors.primary : colors.secondary,
+                  borderWidth: 1,
+                  borderColor: active ? colors.primary : colors.border,
+                }}
+              >
+                <Text style={{ fontSize: 13, fontFamily: 'Inter_600SemiBold', color: active ? '#fff' : colors.muted }}>
+                  {t.label}
+                </Text>
+                {t.count !== null && (
+                  <View style={{
+                    backgroundColor: active ? 'rgba(255,255,255,0.25)' : colors.border,
+                    borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1,
+                  }}>
+                    <Text style={{ fontSize: 11, fontFamily: 'Inter_600SemiBold', color: active ? '#fff' : colors.muted }}>
+                      {t.count}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {/* Sort strip — only when on positions tab and there's something to sort */}
         {tab === 'positions' && positions.length > 1 && (

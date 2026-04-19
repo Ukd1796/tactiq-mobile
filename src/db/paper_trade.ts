@@ -17,18 +17,42 @@ export interface PaperTradeSessionRow {
 
 export type PaperTradeSessionInsert = Omit<PaperTradeSessionRow, 'id' | 'created_at'>;
 
+export const MAX_ACTIVE_SESSIONS = 5;
+
 // ─── Query keys ──────────────────────────────────────────────────────────────
 
 const KEYS = {
   active: (uid: string) => ['db', 'paper-trade', 'active', uid] as const,
 };
 
-// ─── Fetch the user's active session (null if none) ──────────────────────────
+// ─── Fetch all active sessions (up to MAX_ACTIVE_SESSIONS) ───────────────────
+
+export function usePaperSessions() {
+  const { user } = useAuth();
+  return useQuery<PaperTradeSessionRow[], Error>({
+    queryKey: KEYS.active(user?.id ?? ''),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('paper_trade_sessions')
+        .select('*')
+        .eq('user_id', user!.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(MAX_ACTIVE_SESSIONS);
+      if (error) throw error;
+      return (data ?? []) as PaperTradeSessionRow[];
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+}
+
+// ─── Fetch only the most recent active session (used by dashboard widget) ────
 
 export function usePaperSession() {
   const { user } = useAuth();
   return useQuery<PaperTradeSessionRow | null, Error>({
-    queryKey: KEYS.active(user?.id ?? ''),
+    queryKey: [...KEYS.active(user?.id ?? ''), 'single'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('paper_trade_sessions')
@@ -68,7 +92,7 @@ export function useCreatePaperSession() {
   });
 }
 
-// ─── Mark a session as stopped ───────────────────────────────────────────────
+// ─── Mark a session as stopped ──────────────────────────────────────────────
 
 export function useStopPaperSession() {
   const { user } = useAuth();

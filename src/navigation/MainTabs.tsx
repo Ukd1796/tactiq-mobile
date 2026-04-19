@@ -19,8 +19,6 @@ export function MainTabs() {
           backgroundColor: colors.card,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          paddingBottom: 4,
-          height: 60,
         },
         tabBarActiveTintColor:   colors.primary,
         tabBarInactiveTintColor: colors.muted,
