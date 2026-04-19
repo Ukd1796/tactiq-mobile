@@ -6,6 +6,7 @@ import type {
   PaperPosition,
   PaperSignal,
   PaperWeeklyReport,
+  PaperInsights,
 } from './types';
 
 export function useStartPaperTrade() {
@@ -44,5 +45,15 @@ export function usePaperWeeklyReport(sessionId: string | null) {
     queryKey: ['paper-trade', sessionId, 'report', 'weekly'],
     queryFn: () => api.get<PaperWeeklyReport>(`/paper-trade/${sessionId}/report/weekly`),
     enabled: !!sessionId,
+  });
+}
+
+export function usePaperInsights(sessionId: string | null) {
+  return useQuery<PaperInsights>({
+    queryKey: ['paper-trade', sessionId, 'insights'],
+    queryFn: () => api.get<PaperInsights>(`/paper-trade/${sessionId}/insights`),
+    enabled: !!sessionId,
+    staleTime: 60 * 60 * 1000,  // 1 hour — matches backend cache TTL
+    retry: 1,
   });
 }

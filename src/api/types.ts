@@ -224,6 +224,31 @@ export interface PaperWeeklyReport {
   notable_trades: TradeLogEntry[];
 }
 
+// ─── Insights ────────────────────────────────────────────────────────────────
+
+export interface InsightsMeta {
+  signals_7d: number;
+  signals_filled: number;
+  signals_blocked: number;
+  signals_pending: number;
+  block_reasons: Record<string, number>;
+  fill_rate_by_strategy: Record<string, number>;
+  regime: string;
+  breadth_pct_uptrend: number;
+  positions_at_risk: string[];
+  best_performer: string | null;
+  worst_performer: string | null;
+  generated_at: string;
+}
+
+export interface PaperInsights {
+  signal_health: string;
+  position_insight: string;
+  regime_context: string;
+  strategy_tip: string;
+  meta: InsightsMeta;
+}
+
 // ─── Broker ──────────────────────────────────────────────────────────────────
 
 export type BrokerName = 'zerodha';

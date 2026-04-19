@@ -5,12 +5,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StopCircle, TrendingUp, ArrowUpDown, CheckCircle2 } from 'lucide-react-native';
 import { usePaperSession, useStopPaperSession, useCreatePaperSession } from '../../db/paper_trade';
-import { usePaperDashboard, usePaperWeeklyReport, useStartPaperTrade } from '../../api/paper_trade';
+import { usePaperDashboard, usePaperWeeklyReport, useStartPaperTrade, usePaperInsights } from '../../api/paper_trade';
 import { useUserStrategies } from '../../db/strategies';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, Label, Badge, Skeleton, Button } from '../../components/ui';
 import { colors, spacing, radius, regimeColor } from '../../lib/theme';
-import type { PaperPosition } from '../../api/types';
+import type { PaperPosition, PaperInsights } from '../../api/types';
 
 function fmtINR(n: number) { return `₹${n.toLocaleString('en-IN')}`; }
 function fmtPct(n: number) { return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`; }
@@ -18,7 +18,7 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-type Tab = 'positions' | 'signals' | 'report';
+type Tab = 'positions' | 'signals' | 'report' | 'insights';
 
 type PositionSort =
   | 'default'
@@ -58,13 +58,21 @@ function sortPositions(positions: PaperPosition[], sort: PositionSort): PaperPos
 export function PaperTradeScreen({ route }: any) {
   const [tab,          setTab]          = useState<Tab>('positions');
   const [positionSort, setPositionSort] = useState<PositionSort>('default');
-  const [selectedId,   setSelectedId]   = useState<string | null>(route?.params?.strategyId ?? null);
+  const [selectedId,   setSelectedId]   = useState<string | null>(null);
   const [capital,      setCapital]      = useState('100000');
+
+  // Bottom tabs stay mounted — useState initializer only runs once, so sync
+  // params via useEffect to catch navigations to an already-mounted tab.
+  const incomingStrategyId = route?.params?.strategyId as string | undefined;
+  React.useEffect(() => {
+    if (incomingStrategyId) setSelectedId(incomingStrategyId);
+  }, [incomingStrategyId]);
 
   const { user } = useAuth();
   const { data: sessionRow, isLoading: sessionLoading } = usePaperSession();
   const { data: dashboard, refetch, isRefetching } = usePaperDashboard(sessionRow?.session_id ?? null);
   const { data: weeklyReport } = usePaperWeeklyReport(sessionRow?.session_id ?? null);
+  const { data: insights, isLoading: insightsLoading } = usePaperInsights(sessionRow?.session_id ?? null);
   const { data: strategies = [], isLoading: strategiesLoading } = useUserStrategies();
   const stopSession    = useStopPaperSession();
   const startBackend   = useStartPaperTrade();
@@ -295,6 +303,7 @@ export function PaperTradeScreen({ route }: any) {
             { key: 'positions', label: `Positions (${positions.length})` },
             { key: 'signals',   label: `Signals (${signals.length})` },
             { key: 'report',    label: 'Weekly' },
+            { key: 'insights',  label: 'Insights' },
           ] as { key: Tab; label: string }[]).map(t => (
             <TouchableOpacity
               key={t.key}
@@ -480,6 +489,70 @@ export function PaperTradeScreen({ route }: any) {
                 </View>
               </Card>
             ))}
+          </>
+        )}
+
+        {/* ── Insights tab ──────────────────────────────────────────── */}
+        {tab === 'insights' && (
+          <>
+            {/* Signal activity snapshot strip */}
+            {insights?.meta && (
+              <Card>
+                <Label style={{ marginBottom: 12 }}>Signal Activity · 7 days</Label>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {([
+                    { label: 'Generated', value: insights.meta.signals_7d,      color: colors.foreground },
+                    { label: 'Filled',    value: insights.meta.signals_filled,   color: colors.success },
+                    { label: 'Blocked',   value: insights.meta.signals_blocked,  color: insights.meta.signals_blocked > 0 ? colors.warning : colors.muted },
+                    { label: 'Pending',   value: insights.meta.signals_pending,  color: colors.muted },
+                  ] as { label: string; value: number; color: string }[]).map(item => (
+                    <View key={item.label} style={{ width: '47%', backgroundColor: colors.secondary, borderRadius: radius.lg, padding: 12 }}>
+                      <Text style={{ fontSize: 22, fontFamily: 'Inter_700Bold', color: item.color }}>{item.value}</Text>
+                      <Text style={{ fontSize: 11, fontFamily: 'Inter_500Medium', color: colors.foreground, marginTop: 2 }}>{item.label}</Text>
+                    </View>
+                  ))}
+                </View>
+                {insights.meta.positions_at_risk.length > 0 && (
+                  <View style={{ marginTop: 12, backgroundColor: colors.destructive + '22', borderRadius: radius.md, padding: 10 }}>
+                    <Text style={{ fontSize: 12, color: colors.destructive, fontFamily: 'Inter_600SemiBold' }}>
+                      At risk: {insights.meta.positions_at_risk.join(', ')}
+                    </Text>
+                  </View>
+                )}
+              </Card>
+            )}
+
+            {/* AI narrative cards */}
+            <Card>
+              <Label style={{ marginBottom: 12 }}>AI Insights</Label>
+              {insightsLoading ? (
+                [1, 2, 3, 4].map(i => (
+                  <View key={i} style={{ marginBottom: 14 }}>
+                    <Skeleton height={12} style={{ width: '40%', marginBottom: 6 }} />
+                    <Skeleton height={13} />
+                    <Skeleton height={13} style={{ marginTop: 4, width: '80%' }} />
+                  </View>
+                ))
+              ) : insights ? (
+                ([
+                  { title: 'Signal Health',    body: insights.signal_health },
+                  { title: 'Position Insight', body: insights.position_insight },
+                  { title: 'Market Regime',    body: insights.regime_context },
+                  { title: 'Strategy Tip',     body: insights.strategy_tip },
+                ] as { title: string; body: string }[]).filter(n => !!n.body).map(n => (
+                  <View key={n.title} style={{ marginBottom: 14 }}>
+                    <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.primary, marginBottom: 4 }}>
+                      {n.title}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 20 }}>{n.body}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={{ color: colors.muted, fontSize: 13 }}>
+                  Insights are generated after your first signals. Check back after market close.
+                </Text>
+              )}
+            </Card>
           </>
         )}
       </ScrollView>
