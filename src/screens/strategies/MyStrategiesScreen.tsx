@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Edit2, BarChart2, Trash2, Globe, Shield, TrendingUp } from 'lucide-react-native';
 import { useUserStrategies, useDeleteStrategy, useLoadStrategy } from '../../db/strategies';
@@ -87,6 +87,7 @@ export function MyStrategiesScreen({ navigation }: any) {
 
         {strategies?.map(row => {
           const enabledCount = row.strategies.filter(s => s.enabled).length;
+          const isDeleting   = deleteStrategy.isPending && deleteStrategy.variables === row.id;
           return (
             <Card key={row.id}>
               {/* Header */}
@@ -120,9 +121,13 @@ export function MyStrategiesScreen({ navigation }: any) {
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleDelete(row.id, row.name)}
-                    style={{ padding: 6, borderRadius: radius.md, backgroundColor: colors.secondary }}
+                    disabled={isDeleting}
+                    style={{ padding: 6, borderRadius: radius.md, backgroundColor: colors.destructive + '15' }}
                   >
-                    <Trash2 size={16} color={colors.destructive} />
+                    {isDeleting
+                      ? <ActivityIndicator size={16} color={colors.destructive} />
+                      : <Trash2 size={16} color={colors.destructive} />
+                    }
                   </TouchableOpacity>
                 </View>
               </View>

@@ -132,7 +132,7 @@ export function StrategyBuilderScreen({ navigation }: any) {
   const { backtestStartYear, backtestStartMonth, backtestEndYear, backtestEndMonth } = store;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={{
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
