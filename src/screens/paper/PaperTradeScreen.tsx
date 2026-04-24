@@ -321,57 +321,62 @@ export function PaperTradeScreen({ route }: any) {
 
         {/* Metric strip */}
         {dashboard ? (() => {
-          const totalInvested = positions.reduce((sum, p) => sum + p.entry_price * p.quantity, 0);
-          const estPnlAbs = positions.reduce((sum, p) => {
-            if (p.unrealised_pnl_pct == null) return sum;
-            return sum + (p.entry_price * p.quantity * p.unrealised_pnl_pct) / 100;
-          }, 0);
+          const pnlColor  = totalPnlAbs != null ? (totalPnlAbs >= 0 ? colors.success : colors.destructive) : colors.foreground;
+          const dayColor  = dashboard.one_day_pnl_abs != null ? (dashboard.one_day_pnl_abs >= 0 ? colors.success : colors.destructive) : colors.foreground;
           return (
             <View style={{ gap: spacing.sm }}>
-              {/* Row 1 */}
+              {/* Row 1: Invested | Total P&L */}
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                <Card style={{ flex: 1, padding: 10 }}>
-                  <Label>Portfolio</Label>
-                  <Text style={{ fontSize: 15, fontFamily: 'Inter_700Bold', color: colors.foreground, marginTop: 4 }}>
-                    {fmtINR(dashboard.portfolio_value)}
+                <Card style={{ flex: 1, padding: 12 }}>
+                  <Label>Invested</Label>
+                  <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: colors.foreground, marginTop: 4 }}>
+                    {fmtINR(Math.round(dashboard.total_invested))}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>
+                    {positions.length} position{positions.length !== 1 ? 's' : ''}
                   </Text>
                 </Card>
-                <Card style={{ flex: 1, padding: 10 }}>
+                <Card style={{ flex: 1, padding: 12 }}>
                   <Label>Total P&L</Label>
-                  <Text style={{ fontSize: 15, fontFamily: 'Inter_700Bold', color: pnlPct != null ? (pnlPct >= 0 ? colors.success : colors.destructive) : colors.foreground, marginTop: 4 }}>
-                    {pnlPct != null ? fmtPct(pnlPct) : '—'}
+                  <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: pnlColor, marginTop: 4 }}>
+                    {totalPnlAbs != null ? `${totalPnlAbs >= 0 ? '+' : ''}${fmtINR(Math.round(totalPnlAbs))}` : '—'}
                   </Text>
+                  {pnlPct != null && (
+                    <Text style={{ fontSize: 11, fontFamily: 'Inter_600SemiBold', color: pnlColor, marginTop: 2 }}>
+                      {fmtPct(pnlPct)}
+                    </Text>
+                  )}
                 </Card>
               </View>
-              {/* Row 2 */}
+              {/* Row 2: 1-Day P&L | Days */}
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                <Card style={{ flex: 1, padding: 10 }}>
-                  <Label>Invested</Label>
-                  <Text style={{ fontSize: 15, fontFamily: 'Inter_700Bold', color: colors.foreground, marginTop: 4 }}>
-                    {fmtINR(totalInvested)}
+                <Card style={{ flex: 1, padding: 12 }}>
+                  <Label>1-Day P&L</Label>
+                  <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: dayColor, marginTop: 4 }}>
+                    {dashboard.one_day_pnl_abs != null
+                      ? `${dashboard.one_day_pnl_abs >= 0 ? '+' : ''}${fmtINR(Math.round(dashboard.one_day_pnl_abs))}`
+                      : '—'}
                   </Text>
-                  <Text style={{ fontSize: 10, color: colors.muted, marginTop: 1 }}>{positions.length} position{positions.length !== 1 ? 's' : ''}</Text>
+                  {dashboard.one_day_pnl_pct != null && (
+                    <Text style={{ fontSize: 11, fontFamily: 'Inter_600SemiBold', color: dayColor, marginTop: 2 }}>
+                      {fmtPct(dashboard.one_day_pnl_pct)}
+                    </Text>
+                  )}
                 </Card>
-                <Card style={{ flex: 1, padding: 10 }}>
-                  <Label>Unrealised P&L</Label>
-                  <Text style={{ fontSize: 15, fontFamily: 'Inter_700Bold', color: estPnlAbs >= 0 ? colors.success : colors.destructive, marginTop: 4 }}>
-                    {estPnlAbs >= 0 ? '+' : ''}{fmtINR(Math.round(estPnlAbs))}
-                  </Text>
-                  <Text style={{ fontSize: 10, color: colors.muted, marginTop: 1 }}>est. from open pos.</Text>
-                </Card>
-                <Card style={{ flex: 1, padding: 10 }}>
-                  <Label>Day</Label>
-                  <Text style={{ fontSize: 15, fontFamily: 'Inter_700Bold', color: colors.foreground, marginTop: 4 }}>
+                <Card style={{ flex: 1, padding: 12 }}>
+                  <Label>Days</Label>
+                  <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: colors.foreground, marginTop: 4 }}>
                     {dashboard.day_count}
                   </Text>
+                  <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>active</Text>
                 </Card>
               </View>
             </View>
           );
         })() : (
           <View style={{ gap: spacing.sm }}>
-            <Skeleton height={64} />
-            <Skeleton height={64} />
+            <Skeleton height={72} />
+            <Skeleton height={72} />
           </View>
         )}
 

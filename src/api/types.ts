@@ -215,6 +215,8 @@ export interface PaperDashboard {
   cash_balance: number;
   unrealised_pnl_abs: number | null;
   realised_pnl_abs: number | null;
+  one_day_pnl_abs: number | null;
+  one_day_pnl_pct: number | null;
 }
 
 export interface PaperWeeklyReport {
