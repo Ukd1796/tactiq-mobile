@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl, TextInput,
+  View, Text, ScrollView, TouchableOpacity, Alert, RefreshControl, TextInput, Modal, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StopCircle, TrendingUp, ArrowUpDown, CheckCircle2 } from 'lucide-react-native';
+import { StopCircle, TrendingUp, ArrowUpDown, CheckCircle2, TrendingDown, X, Info } from 'lucide-react-native';
 import { usePaperSessions, useStopPaperSession, useCreatePaperSession, MAX_ACTIVE_SESSIONS } from '../../db/paper_trade';
 import { usePaperDashboard, usePaperWeeklyReport, useStartPaperTrade, usePaperInsights } from '../../api/paper_trade';
 import { useUserStrategies } from '../../db/strategies';
@@ -62,6 +62,7 @@ export function PaperTradeScreen({ route }: any) {
   const [capital,        setCapital]        = useState('100000');
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [showNewForm,     setShowNewForm]     = useState(false);
+  const [selectedSignal,  setSelectedSignal]  = useState<import('../../api/types').PaperSignal | null>(null);
 
   // Bottom tabs stay mounted — useState initializer only runs once, so sync
   // params via useEffect to catch navigations to an already-mounted tab.
@@ -512,25 +513,183 @@ export function PaperTradeScreen({ route }: any) {
         {tab === 'signals' && (
           signals.length === 0 ? (
             <Text style={{ fontSize: 13, color: colors.muted, textAlign: 'center', paddingVertical: 32 }}>No signals today</Text>
-          ) : signals.map(s => (
-            <Card key={s.id}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View>
-                  <Text style={{ fontSize: 15, fontFamily: 'Inter_700Bold', color: colors.foreground }}>{s.symbol}</Text>
-                  <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{s.strategy.replace(/-/g, ' ')} · {fmtDate(s.date)}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                  <Badge label={s.status} color={
-                    s.status === 'BUY' ? colors.success :
-                    s.status === 'SELL' ? colors.destructive :
-                    s.status === 'FILLED' ? colors.primary : colors.muted
-                  } />
-                  <Text style={{ fontSize: 11, color: colors.muted }}>{fmtINR(s.entry_price)}</Text>
-                </View>
-              </View>
-            </Card>
-          ))
+          ) : signals.map(s => {
+            const direction = s.action ?? (s.status === 'BUY' || s.status === 'SELL' ? s.status : null);
+            const isBuy     = direction === 'BUY';
+            const dirColor  = isBuy ? colors.success : colors.destructive;
+            const execState = s.status === 'FILLED' || s.status === 'PENDING' || s.status === 'CANCELLED' ? s.status : null;
+            return (
+              <TouchableOpacity key={s.id} activeOpacity={0.75} onPress={() => setSelectedSignal(s)}>
+                <Card style={{ borderLeftWidth: 3, borderLeftColor: dirColor }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    {/* Left: symbol + strategy */}
+                    <View style={{ flex: 1, marginRight: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: colors.foreground }}>{s.symbol}</Text>
+                        {direction && (
+                          <View style={{
+                            flexDirection: 'row', alignItems: 'center', gap: 3,
+                            paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full,
+                            backgroundColor: dirColor + '20',
+                          }}>
+                            {isBuy
+                              ? <TrendingUp  size={11} color={dirColor} />
+                              : <TrendingDown size={11} color={dirColor} />}
+                            <Text style={{ fontSize: 11, fontFamily: 'Inter_700Bold', color: dirColor }}>{direction}</Text>
+                          </View>
+                        )}
+                        {execState && (
+                          <Badge label={execState} color={
+                            execState === 'FILLED' ? colors.primary :
+                            execState === 'PENDING' ? colors.warning : colors.muted
+                          } />
+                        )}
+                      </View>
+                      <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
+                        {s.strategy.replace(/-/g, ' ')}
+                      </Text>
+                    </View>
+                    {/* Right: price + tap hint */}
+                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                      <Text style={{ fontSize: 14, fontFamily: 'Inter_700Bold', color: colors.foreground }}>
+                        {fmtINR(s.entry_price)}
+                      </Text>
+                      <Info size={14} color={colors.muted} />
+                    </View>
+                  </View>
+
+                  {/* Detail row */}
+                  <View style={{ flexDirection: 'row', gap: 16, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
+                    {s.quantity != null && (
+                      <View>
+                        <Text style={{ fontSize: 10, color: colors.muted }}>Quantity</Text>
+                        <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.foreground, marginTop: 2 }}>{s.quantity}</Text>
+                      </View>
+                    )}
+                    {s.quantity != null && (
+                      <View>
+                        <Text style={{ fontSize: 10, color: colors.muted }}>Value</Text>
+                        <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.foreground, marginTop: 2 }}>
+                          {fmtINR(Math.round(s.entry_price * s.quantity))}
+                        </Text>
+                      </View>
+                    )}
+                    <View>
+                      <Text style={{ fontSize: 10, color: colors.muted }}>Date</Text>
+                      <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.foreground, marginTop: 2 }}>{fmtDate(s.date)}</Text>
+                    </View>
+                  </View>
+                </Card>
+              </TouchableOpacity>
+            );
+          })
         )}
+
+        {/* Signal detail modal */}
+        {selectedSignal && (() => {
+          const s         = selectedSignal;
+          const direction = s.action ?? (s.status === 'BUY' || s.status === 'SELL' ? s.status : null);
+          const isBuy     = direction === 'BUY';
+          const dirColor  = isBuy ? colors.success : colors.destructive;
+          return (
+            <Modal transparent animationType="slide" visible onRequestClose={() => setSelectedSignal(null)}>
+              <Pressable
+                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+                onPress={() => setSelectedSignal(null)}
+              >
+                <Pressable onPress={() => {}}>
+                  <View style={{
+                    backgroundColor: colors.background,
+                    borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
+                    padding: spacing.lg, gap: spacing.md,
+                  }}>
+                    {/* Handle */}
+                    <View style={{ alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 4 }} />
+
+                    {/* Header */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                          <Text style={{ fontSize: 22, fontFamily: 'Inter_700Bold', color: colors.foreground }}>{s.symbol}</Text>
+                          {direction && (
+                            <View style={{
+                              flexDirection: 'row', alignItems: 'center', gap: 4,
+                              paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.full,
+                              backgroundColor: dirColor + '20',
+                            }}>
+                              {isBuy
+                                ? <TrendingUp  size={13} color={dirColor} />
+                                : <TrendingDown size={13} color={dirColor} />}
+                              <Text style={{ fontSize: 13, fontFamily: 'Inter_700Bold', color: dirColor }}>{direction}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>{fmtDate(s.date)}</Text>
+                      </View>
+                      <TouchableOpacity onPress={() => setSelectedSignal(null)} style={{ padding: 4 }}>
+                        <X size={20} color={colors.muted} />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Strategy section */}
+                    <View style={{ backgroundColor: colors.secondary, borderRadius: radius.md, padding: 14, gap: 4 }}>
+                      <Text style={{ fontSize: 11, color: colors.muted, fontFamily: 'Inter_500Medium' }}>STRATEGY</Text>
+                      <Text style={{ fontSize: 15, fontFamily: 'Inter_600SemiBold', color: colors.foreground }}>
+                        {s.strategy.replace(/-/g, ' ')}
+                      </Text>
+                      <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2, lineHeight: 18 }}>
+                        {isBuy
+                          ? `This strategy detected a buy opportunity in ${s.symbol}. The position will be sized according to your risk settings.`
+                          : `This strategy triggered an exit signal for ${s.symbol}. The position is being closed to lock in results.`}
+                      </Text>
+                    </View>
+
+                    {/* Stats grid */}
+                    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                      {[
+                        { label: 'Entry Price', value: fmtINR(s.entry_price) },
+                        { label: 'Quantity',    value: s.quantity != null ? `${s.quantity} shares` : '—' },
+                        { label: 'Signal Value', value: s.quantity != null ? fmtINR(Math.round(s.entry_price * s.quantity)) : '—' },
+                      ].map(item => (
+                        <View key={item.label} style={{ flex: 1, backgroundColor: colors.secondary, borderRadius: radius.md, padding: 12, alignItems: 'center' }}>
+                          <Text style={{ fontSize: 10, color: colors.muted, textAlign: 'center' }}>{item.label}</Text>
+                          <Text style={{ fontSize: 13, fontFamily: 'Inter_700Bold', color: colors.foreground, marginTop: 4, textAlign: 'center' }}>{item.value}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Status */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.secondary, borderRadius: radius.md, padding: 12 }}>
+                      <Text style={{ fontSize: 12, color: colors.muted }}>Status</Text>
+                      <Badge label={s.status} color={
+                        s.status === 'BUY'    ? colors.success :
+                        s.status === 'SELL'   ? colors.destructive :
+                        s.status === 'FILLED' ? colors.primary :
+                        s.status === 'PENDING' ? colors.warning : colors.muted
+                      } />
+                      {s.status === 'FILLED' && (
+                        <Text style={{ fontSize: 12, color: colors.muted, marginLeft: 4 }}>· Order executed successfully</Text>
+                      )}
+                      {s.status === 'PENDING' && (
+                        <Text style={{ fontSize: 12, color: colors.muted, marginLeft: 4 }}>· Waiting for next market open</Text>
+                      )}
+                    </View>
+
+                    {/* Notes from backend if present */}
+                    {s.notes && (
+                      <View style={{ backgroundColor: colors.primary + '15', borderRadius: radius.md, padding: 12 }}>
+                        <Text style={{ fontSize: 12, color: colors.primary, fontFamily: 'Inter_600SemiBold', marginBottom: 4 }}>Note</Text>
+                        <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 18 }}>{s.notes}</Text>
+                      </View>
+                    )}
+
+                    <View style={{ height: spacing.md }} />
+                  </View>
+                </Pressable>
+              </Pressable>
+            </Modal>
+          );
+        })()}
 
         {tab === 'report' && !weeklyReport && (
           <View style={{ gap: spacing.sm }}>

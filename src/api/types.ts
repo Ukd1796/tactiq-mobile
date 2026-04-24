@@ -197,8 +197,11 @@ export interface PaperSignal {
   date: string;
   symbol: string;
   status: SignalStatus;
+  action?: 'BUY' | 'SELL';   // original direction; status may later become FILLED/CANCELLED
   strategy: string;
   entry_price: number;
+  quantity?: number;
+  notes?: string;
 }
 
 export interface PaperDashboard {
