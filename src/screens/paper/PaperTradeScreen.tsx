@@ -125,8 +125,13 @@ export function PaperTradeScreen({ route }: any) {
     );
   };
 
-  const pnlPct = dashboard && sessionRow
-    ? ((dashboard.portfolio_value - sessionRow.starting_capital) / sessionRow.starting_capital) * 100
+  // P&L % on invested capital: total gain (realised + unrealised) divided by
+  // what's actually deployed — not starting capital, which penalises idle cash.
+  const totalPnlAbs = dashboard
+    ? (dashboard.portfolio_value - (sessionRow?.starting_capital ?? 0))
+    : null;
+  const pnlPct = totalPnlAbs != null && dashboard && dashboard.total_invested > 0
+    ? (totalPnlAbs / dashboard.total_invested) * 100
     : null;
 
   const handleStop = () => {
