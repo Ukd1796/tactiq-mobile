@@ -259,7 +259,7 @@ export function PaperTradeScreen({ route }: any) {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
       <ScrollView
         contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.primary} />}
@@ -521,8 +521,8 @@ export function PaperTradeScreen({ route }: any) {
             return (
               <TouchableOpacity key={s.id} activeOpacity={0.75} onPress={() => setSelectedSignal(s)}>
                 <Card style={{ borderLeftWidth: 3, borderLeftColor: dirColor }}>
+                  {/* Row 1: symbol + direction badge | price + tap hint */}
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    {/* Left: symbol + strategy */}
                     <View style={{ flex: 1, marginRight: 12 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: colors.foreground }}>{s.symbol}</Text>
@@ -538,18 +538,11 @@ export function PaperTradeScreen({ route }: any) {
                             <Text style={{ fontSize: 11, fontFamily: 'Inter_700Bold', color: dirColor }}>{direction}</Text>
                           </View>
                         )}
-                        {execState && (
-                          <Badge label={execState} color={
-                            execState === 'FILLED' ? colors.primary :
-                            execState === 'PENDING' ? colors.warning : colors.muted
-                          } />
-                        )}
                       </View>
                       <Text style={{ fontSize: 11, color: colors.muted, marginTop: 4 }}>
                         {s.strategy.replace(/-/g, ' ')}
                       </Text>
                     </View>
-                    {/* Right: price + tap hint */}
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
                       <Text style={{ fontSize: 14, fontFamily: 'Inter_700Bold', color: colors.foreground }}>
                         {fmtINR(s.entry_price)}
@@ -558,26 +551,34 @@ export function PaperTradeScreen({ route }: any) {
                     </View>
                   </View>
 
-                  {/* Detail row */}
-                  <View style={{ flexDirection: 'row', gap: 16, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
-                    {s.quantity != null && (
+                  {/* Detail row: qty/value/date on left, status badge on right */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
+                    <View style={{ flexDirection: 'row', gap: 16 }}>
+                      {s.quantity != null && (
+                        <View>
+                          <Text style={{ fontSize: 10, color: colors.muted }}>Quantity</Text>
+                          <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.foreground, marginTop: 2 }}>{s.quantity}</Text>
+                        </View>
+                      )}
+                      {s.quantity != null && (
+                        <View>
+                          <Text style={{ fontSize: 10, color: colors.muted }}>Value</Text>
+                          <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.foreground, marginTop: 2 }}>
+                            {fmtINR(Math.round(s.entry_price * s.quantity))}
+                          </Text>
+                        </View>
+                      )}
                       <View>
-                        <Text style={{ fontSize: 10, color: colors.muted }}>Quantity</Text>
-                        <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.foreground, marginTop: 2 }}>{s.quantity}</Text>
+                        <Text style={{ fontSize: 10, color: colors.muted }}>Date</Text>
+                        <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.foreground, marginTop: 2 }}>{fmtDate(s.date)}</Text>
                       </View>
-                    )}
-                    {s.quantity != null && (
-                      <View>
-                        <Text style={{ fontSize: 10, color: colors.muted }}>Value</Text>
-                        <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.foreground, marginTop: 2 }}>
-                          {fmtINR(Math.round(s.entry_price * s.quantity))}
-                        </Text>
-                      </View>
-                    )}
-                    <View>
-                      <Text style={{ fontSize: 10, color: colors.muted }}>Date</Text>
-                      <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.foreground, marginTop: 2 }}>{fmtDate(s.date)}</Text>
                     </View>
+                    {execState && (
+                      <Badge label={execState} color={
+                        execState === 'FILLED'    ? colors.primary :
+                        execState === 'PENDING'   ? colors.warning : colors.muted
+                      } />
+                    )}
                   </View>
                 </Card>
               </TouchableOpacity>
