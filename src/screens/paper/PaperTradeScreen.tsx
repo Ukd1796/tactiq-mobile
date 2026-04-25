@@ -5,11 +5,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StopCircle, TrendingUp, ArrowUpDown, CheckCircle2, TrendingDown, X, Info } from 'lucide-react-native';
 import { usePaperSessions, useStopPaperSession, useCreatePaperSession, MAX_ACTIVE_SESSIONS } from '../../db/paper_trade';
-import { usePaperDashboard, usePaperWeeklyReport, useStartPaperTrade, usePaperInsights } from '../../api/paper_trade';
+import { usePaperDashboard, useStartPaperTrade, usePaperInsights } from '../../api/paper_trade';
 import { useUserStrategies } from '../../db/strategies';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card, Label, Badge, Skeleton, Button } from '../../components/ui';
-import { colors, spacing, radius, regimeColor } from '../../lib/theme';
+import { colors, spacing, radius } from '../../lib/theme';
 import type { PaperPosition, PaperInsights } from '../../api/types';
 
 function fmtINR(n: number) { return `₹${n.toLocaleString('en-IN')}`; }
@@ -18,7 +18,7 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-type Tab = 'positions' | 'signals' | 'report' | 'insights';
+type Tab = 'positions' | 'signals' | 'insights';
 
 type PositionSort =
   | 'default'
@@ -88,7 +88,6 @@ export function PaperTradeScreen({ route }: any) {
   const sessionRow = sessions.find(s => s.id === activeSessionId) ?? null;
 
   const { data: dashboard, refetch, isRefetching } = usePaperDashboard(sessionRow?.session_id ?? null);
-  const { data: weeklyReport } = usePaperWeeklyReport(sessionRow?.session_id ?? null);
   const { data: insights, isLoading: insightsLoading } = usePaperInsights(sessionRow?.session_id ?? null);
   const { data: strategies = [], isLoading: strategiesLoading } = useUserStrategies();
   const stopSession    = useStopPaperSession();
@@ -389,7 +388,6 @@ export function PaperTradeScreen({ route }: any) {
           {([
             { key: 'positions', label: 'Positions', count: positions.length },
             { key: 'signals',   label: 'Signals',   count: signals.length },
-            { key: 'report',    label: 'Weekly',    count: null },
             { key: 'insights',  label: 'Insights',  count: null },
           ] as { key: Tab; label: string; count: number | null }[]).map(t => {
             const active = tab === t.key;
@@ -701,58 +699,6 @@ export function PaperTradeScreen({ route }: any) {
             </Modal>
           );
         })()}
-
-        {tab === 'report' && !weeklyReport && (
-          <View style={{ gap: spacing.sm }}>
-            <Skeleton height={80} />
-            <Skeleton height={120} />
-          </View>
-        )}
-
-        {tab === 'report' && weeklyReport && (
-          <>
-            <Card>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 13, fontFamily: 'Inter_600SemiBold', color: colors.foreground }}>
-                  {fmtDate(weeklyReport.week_start)} — {fmtDate(weeklyReport.week_end)}
-                </Text>
-                <Badge label={weeklyReport.regime.replace(/_/g, ' ')} color={regimeColor[weeklyReport.regime] ?? colors.muted} />
-              </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {[
-                  { l: 'Signals', v: weeklyReport.total_signals },
-                  { l: 'Buys',    v: weeklyReport.filled_buys },
-                  { l: 'Sells',   v: weeklyReport.filled_sells },
-                  { l: 'Pending', v: weeklyReport.pending_signals },
-                ].map(s => (
-                  <View key={s.l} style={{ flex: 1, backgroundColor: colors.secondary, borderRadius: 8, padding: 10, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 20, fontFamily: 'Inter_700Bold', color: colors.foreground }}>{s.v}</Text>
-                    <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>{s.l}</Text>
-                  </View>
-                ))}
-              </View>
-            </Card>
-
-            {weeklyReport.notable_trades.length > 0 && weeklyReport.notable_trades.map((t, i) => (
-              <Card key={i}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <View>
-                    <Text style={{ fontSize: 15, fontFamily: 'Inter_700Bold', color: colors.foreground }}>{t.symbol}</Text>
-                    <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>{t.strategy.replace(/-/g, ' ')} · {fmtDate(t.date)}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Badge label={t.action} color={t.action === 'BUY' ? colors.success : colors.destructive} />
-                    {t.pnl_pct != null && (
-                      <Text style={{ fontSize: 13, fontFamily: 'Inter_700Bold', color: t.pnl_pct >= 0 ? colors.success : colors.destructive, marginTop: 4 }}>
-                        {fmtPct(t.pnl_pct)}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              </Card>
-            ))}
-          </>
-        )}
 
         {/* ── Insights tab ──────────────────────────────────────────── */}
         {tab === 'insights' && (
