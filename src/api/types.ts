@@ -211,10 +211,17 @@ export interface PaperDashboard {
   regime: RegimeValue;
   open_positions: PaperPosition[];
   todays_signals: PaperSignal[];
+  starting_capital: number;
   total_invested: number;
   cash_balance: number;
   unrealised_pnl_abs: number | null;
   realised_pnl_abs: number | null;
+  /** Combined realised + unrealised P&L vs starting capital */
+  total_pnl_abs: number;
+  /** Portfolio return % = total_pnl_abs / starting_capital */
+  total_pnl_pct: number | null;
+  /** Return on deployed capital only = unrealised_pnl_abs / total_invested */
+  invested_pnl_pct: number | null;
   one_day_pnl_abs: number | null;
   one_day_pnl_pct: number | null;
 }

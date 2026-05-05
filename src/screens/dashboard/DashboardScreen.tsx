@@ -71,9 +71,7 @@ export function DashboardScreen({ navigation }: any) {
   const isRefreshing = regimeLoading || universeLoading;
   const onRefresh = () => { refetchRegime(); refetchUniverse(); };
 
-  const pnlPct = paperDashboard && paperSession
-    ? ((paperDashboard.portfolio_value - paperSession.starting_capital) / paperSession.starting_capital) * 100
-    : null;
+  const pnlPct = paperDashboard?.total_pnl_pct ?? null;
 
   const regimeClr = regime ? (regimeColor[regime.regime] ?? colors.muted) : colors.muted;
 

@@ -124,14 +124,12 @@ export function PaperTradeScreen({ route }: any) {
     );
   };
 
-  // P&L % on invested capital: total gain (realised + unrealised) divided by
-  // what's actually deployed — not starting capital, which penalises idle cash.
-  const totalPnlAbs = dashboard
-    ? (dashboard.portfolio_value - (sessionRow?.starting_capital ?? 0))
-    : null;
-  const pnlPct = totalPnlAbs != null && dashboard && dashboard.total_invested > 0
-    ? (totalPnlAbs / dashboard.total_invested) * 100
-    : null;
+  // Total P&L = realised + unrealised (vs starting capital)
+  const totalPnlAbs    = dashboard?.total_pnl_abs ?? null;
+  // Portfolio return %: totalPnlAbs / starting_capital (overall account performance)
+  const pnlPct         = dashboard?.total_pnl_pct ?? null;
+  // Invested return %: unrealised gain / cost of open positions (stock-pick quality)
+  const investedPnlPct = dashboard?.invested_pnl_pct ?? null;
 
   const handleStop = () => {
     Alert.alert(
@@ -342,7 +340,12 @@ export function PaperTradeScreen({ route }: any) {
                   </Text>
                   {pnlPct != null && (
                     <Text style={{ fontSize: 11, fontFamily: 'Inter_600SemiBold', color: pnlColor, marginTop: 2 }}>
-                      {fmtPct(pnlPct)}
+                      {fmtPct(pnlPct)} overall
+                    </Text>
+                  )}
+                  {investedPnlPct != null && (
+                    <Text style={{ fontSize: 10, color: pnlColor, marginTop: 1, opacity: 0.75 }}>
+                      {fmtPct(investedPnlPct)} on deployed
                     </Text>
                   )}
                 </Card>
