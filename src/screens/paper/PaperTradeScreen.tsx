@@ -318,39 +318,48 @@ export function PaperTradeScreen({ route }: any) {
 
         {/* Metric strip */}
         {dashboard ? (() => {
-          const pnlColor  = totalPnlAbs != null ? (totalPnlAbs >= 0 ? colors.success : colors.destructive) : colors.foreground;
-          const dayColor  = dashboard.one_day_pnl_abs != null ? (dashboard.one_day_pnl_abs >= 0 ? colors.success : colors.destructive) : colors.foreground;
+          const totalPnlColor    = totalPnlAbs != null ? (totalPnlAbs >= 0 ? colors.success : colors.destructive) : colors.foreground;
+          const investedPnlColor = investedPnlPct != null ? (investedPnlPct >= 0 ? colors.success : colors.destructive) : colors.foreground;
+          const dayColor         = dashboard.one_day_pnl_abs != null ? (dashboard.one_day_pnl_abs >= 0 ? colors.success : colors.destructive) : colors.foreground;
+          const unrealisedAbs    = dashboard.unrealised_pnl_abs;
           return (
             <View style={{ gap: spacing.sm }}>
-              {/* Row 1: Invested | Total P&L */}
+              {/* Row 1: On Invested | Total P&L */}
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                {/* On Invested — how open stock positions are performing */}
                 <Card style={{ flex: 1, padding: 12 }}>
-                  <Label>Invested</Label>
-                  <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: colors.foreground, marginTop: 4 }}>
-                    {fmtINR(Math.round(dashboard.total_invested))}
+                  <Label>On Invested</Label>
+                  <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: investedPnlColor, marginTop: 4 }}>
+                    {unrealisedAbs != null
+                      ? `${unrealisedAbs >= 0 ? '+' : ''}${fmtINR(Math.round(unrealisedAbs))}`
+                      : '—'}
                   </Text>
+                  {investedPnlPct != null && (
+                    <Text style={{ fontSize: 11, fontFamily: 'Inter_600SemiBold', color: investedPnlColor, marginTop: 2 }}>
+                      {fmtPct(investedPnlPct)}
+                    </Text>
+                  )}
                   <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>
-                    {positions.length} position{positions.length !== 1 ? 's' : ''}
+                    of {fmtINR(Math.round(dashboard.total_invested))} deployed
                   </Text>
                 </Card>
+                {/* Total P&L — full portfolio return vs starting capital */}
                 <Card style={{ flex: 1, padding: 12 }}>
                   <Label>Total P&L</Label>
-                  <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: pnlColor, marginTop: 4 }}>
+                  <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: totalPnlColor, marginTop: 4 }}>
                     {totalPnlAbs != null ? `${totalPnlAbs >= 0 ? '+' : ''}${fmtINR(Math.round(totalPnlAbs))}` : '—'}
                   </Text>
                   {pnlPct != null && (
-                    <Text style={{ fontSize: 11, fontFamily: 'Inter_600SemiBold', color: pnlColor, marginTop: 2 }}>
-                      {fmtPct(pnlPct)} overall
+                    <Text style={{ fontSize: 11, fontFamily: 'Inter_600SemiBold', color: totalPnlColor, marginTop: 2 }}>
+                      {fmtPct(pnlPct)}
                     </Text>
                   )}
-                  {investedPnlPct != null && (
-                    <Text style={{ fontSize: 10, color: pnlColor, marginTop: 1, opacity: 0.75 }}>
-                      {fmtPct(investedPnlPct)} on deployed
-                    </Text>
-                  )}
+                  <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>
+                    of {fmtINR(Math.round(dashboard.starting_capital))} capital
+                  </Text>
                 </Card>
               </View>
-              {/* Row 2: 1-Day P&L | Days */}
+              {/* Row 2: 1-Day P&L | Deployed */}
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 <Card style={{ flex: 1, padding: 12 }}>
                   <Label>1-Day P&L</Label>
@@ -366,11 +375,13 @@ export function PaperTradeScreen({ route }: any) {
                   )}
                 </Card>
                 <Card style={{ flex: 1, padding: 12 }}>
-                  <Label>Days</Label>
+                  <Label>Deployed</Label>
                   <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: colors.foreground, marginTop: 4 }}>
-                    {dashboard.day_count}
+                    {fmtINR(Math.round(dashboard.total_invested))}
                   </Text>
-                  <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>active</Text>
+                  <Text style={{ fontSize: 10, color: colors.muted, marginTop: 2 }}>
+                    {positions.length} position{positions.length !== 1 ? 's' : ''} · day {dashboard.day_count}
+                  </Text>
                 </Card>
               </View>
             </View>
