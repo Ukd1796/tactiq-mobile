@@ -328,7 +328,7 @@ export function PaperTradeScreen({ route }: any) {
               <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                 {/* On Invested — how open stock positions are performing */}
                 <Card style={{ flex: 1, padding: 12 }}>
-                  <Label>On Invested</Label>
+                  <Label>Open Positions</Label>
                   <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: investedPnlColor, marginTop: 4 }}>
                     {unrealisedAbs != null
                       ? `${unrealisedAbs >= 0 ? '+' : ''}${fmtINR(Math.round(unrealisedAbs))}`
