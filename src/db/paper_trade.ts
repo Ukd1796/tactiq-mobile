@@ -12,10 +12,15 @@ export interface PaperTradeSessionRow {
   strategy_name: string;     // denormalized for display
   starting_capital: number;
   status: 'active' | 'stopped';
+  live_mode: boolean;
+  broker: string | null;
   created_at: string;
 }
 
-export type PaperTradeSessionInsert = Omit<PaperTradeSessionRow, 'id' | 'created_at'>;
+export type PaperTradeSessionInsert = Omit<PaperTradeSessionRow, 'id' | 'created_at' | 'live_mode' | 'broker'> & {
+  live_mode?: boolean;
+  broker?: string | null;
+};
 
 export const MAX_ACTIVE_SESSIONS = 5;
 
@@ -41,6 +46,30 @@ export function usePaperSessions() {
         .limit(MAX_ACTIVE_SESSIONS);
       if (error) throw error;
       return (data ?? []) as PaperTradeSessionRow[];
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+}
+
+// ─── Fetch the most recent active LIVE session (live_mode = true) ─────────────
+
+export function useLiveSession() {
+  const { user } = useAuth();
+  return useQuery<PaperTradeSessionRow | null, Error>({
+    queryKey: [...KEYS.active(user?.id ?? ''), 'live'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('paper_trade_sessions')
+        .select('*')
+        .eq('user_id', user!.id)
+        .eq('status', 'active')
+        .eq('live_mode', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as PaperTradeSessionRow | null;
     },
     enabled: !!user,
     staleTime: 60_000,
