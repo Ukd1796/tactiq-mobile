@@ -42,6 +42,7 @@ export function usePaperSessions() {
         .select('*')
         .eq('user_id', user!.id)
         .eq('status', 'active')
+        .eq('live_mode', false)
         .order('created_at', { ascending: false })
         .limit(MAX_ACTIVE_SESSIONS);
       if (error) throw error;
@@ -88,6 +89,7 @@ export function usePaperSession() {
         .select('*')
         .eq('user_id', user!.id)
         .eq('status', 'active')
+        .eq('live_mode', false)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
