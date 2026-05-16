@@ -51,11 +51,13 @@ export function LiveTradingScreen() {
   // OAuth polling state — auto-polls after browser opens
   const [isPolling, setIsPolling]   = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   // Live session creation form state
   const [selectedStrategy, setSelectedStrategy] = useState<UserStrategyRow | null>(null);
   const [capital, setCapital]   = useState('100000');
   const [startingSession, setStartingSession] = useState(false);
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
@@ -84,14 +86,13 @@ export function LiveTradingScreen() {
 
   const handleConnect = useCallback(async () => {
     if (!user) return;
+    setConnectError(null);
     try {
       const result = await connectBroker.mutateAsync({ broker: 'zerodha', user_id: user.id });
-      // Open Zerodha OAuth in the system browser
       await Linking.openURL(result.login_url);
-      // Poll status until Zerodha callback fires and backend stores the token
       startPolling();
     } catch (err: any) {
-      console.warn('Connect error:', err?.message);
+      setConnectError(err?.message ?? 'Failed to reach the server. Check your connection.');
     }
   }, [user, connectBroker, startPolling]);
 
@@ -106,6 +107,7 @@ export function LiveTradingScreen() {
     if (isNaN(cap) || cap < 10_000) return;
 
     setStartingSession(true);
+    setSessionError(null);
     try {
       const session = await startTrade.mutateAsync({
         strategy_id:      selectedStrategy.id,
@@ -127,7 +129,7 @@ export function LiveTradingScreen() {
         broker:           'zerodha',
       });
     } catch (err: any) {
-      console.warn('Start live session error:', err?.message);
+      setSessionError(err?.message ?? 'Failed to start live session.');
     } finally {
       setStartingSession(false);
     }
@@ -186,6 +188,19 @@ export function LiveTradingScreen() {
                     Login with Zerodha →
                   </Button>
 
+                  {connectError && (
+                    <View style={{
+                      backgroundColor: colors.destructive + '18',
+                      borderRadius: radius.md,
+                      padding: 10,
+                      marginBottom: 8,
+                    }}>
+                      <Text style={{ fontSize: 12, color: colors.destructive, lineHeight: 17 }}>
+                        {connectError}
+                      </Text>
+                    </View>
+                  )}
+
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <ShieldCheck size={13} color={colors.muted} />
                     <Text style={{ fontSize: 11, color: colors.muted, flex: 1 }}>
@@ -226,9 +241,16 @@ export function LiveTradingScreen() {
                   </TouchableOpacity>
                 </View>
               ) : (
-                <Button onPress={handleConnect} loading={connectBroker.isPending}>
-                  Re-authenticate with Zerodha →
-                </Button>
+                <>
+                  <Button onPress={handleConnect} loading={connectBroker.isPending}>
+                    Re-authenticate with Zerodha →
+                  </Button>
+                  {connectError && (
+                    <Text style={{ fontSize: 12, color: colors.destructive, marginTop: 8 }}>
+                      {connectError}
+                    </Text>
+                  )}
+                </>
               )}
             </Card>
           )}
@@ -344,6 +366,11 @@ export function LiveTradingScreen() {
                     style={{ ...inputStyle, marginBottom: 14 }}
                   />
 
+                  {sessionError && (
+                    <Text style={{ fontSize: 12, color: colors.destructive, marginBottom: 8 }}>
+                      {sessionError}
+                    </Text>
+                  )}
                   <Button
                     onPress={handleStartLiveSession}
                     loading={startingSession}
