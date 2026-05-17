@@ -725,8 +725,8 @@ export function PaperTradeScreen({ route }: any) {
                   {([
                     { label: 'Generated', value: insights.meta.signals_7d,      color: colors.foreground },
                     { label: 'Filled',    value: insights.meta.signals_filled,   color: colors.success },
-                    { label: 'Blocked',   value: insights.meta.signals_blocked,  color: insights.meta.signals_blocked > 0 ? colors.warning : colors.muted },
-                    { label: 'Pending',   value: insights.meta.signals_pending,  color: colors.muted },
+                    { label: 'Skipped',   value: insights.meta.signals_blocked,  color: insights.meta.signals_blocked > 0 ? colors.warning : colors.muted },
+                    { label: 'Waiting',   value: insights.meta.signals_pending,  color: colors.muted },
                   ] as { label: string; value: number; color: string }[]).map(item => (
                     <View key={item.label} style={{ width: '47%', backgroundColor: colors.secondary, borderRadius: radius.lg, padding: 12 }}>
                       <Text style={{ fontSize: 22, fontFamily: 'Inter_700Bold', color: item.color }}>{item.value}</Text>
@@ -757,10 +757,10 @@ export function PaperTradeScreen({ route }: any) {
                 ))
               ) : insights ? (
                 ([
-                  { title: 'Signal Health',    body: insights.signal_health },
-                  { title: 'Position Insight', body: insights.position_insight },
-                  { title: 'Market Regime',    body: insights.regime_context },
-                  { title: 'Strategy Tip',     body: insights.strategy_tip },
+                  { title: 'What Happened',  body: insights.signal_health },
+                  { title: 'Your Portfolio', body: insights.position_insight },
+                  { title: 'Market Mood',    body: insights.regime_context },
+                  { title: 'What to Watch',  body: insights.strategy_tip },
                 ] as { title: string; body: string }[]).filter(n => !!n.body).map(n => (
                   <View key={n.title} style={{ marginBottom: 14 }}>
                     <Text style={{ fontSize: 12, fontFamily: 'Inter_600SemiBold', color: colors.primary, marginBottom: 4 }}>
